@@ -36,8 +36,7 @@ binary_value = show_bits(switch_value)
 set_bits = binary_value.count("1")
 zero_bits = binary_value.count("0")
 
-print("
-PART 1: Set Bits and Zero Bits")
+print("PART 1: Set Bits and Zero Bits")
 print("Set Bits / ON Switches:", set_bits)
 print("Zero Bits / OFF Switches:", zero_bits)
 
@@ -54,8 +53,7 @@ while temp > 0:
         count = count + 1
     temp = temp >> 1
 
-print("
-PART 2: Counting Set Bits")
+print("PART 2: Counting Set Bits")
 print("Number of ON switches:", count)
 
 
@@ -72,8 +70,7 @@ while temp > 0:
     position = position + 1
     temp = temp >> 1
 
-print("
-PART 3: The First Set Bit")
+print("PART 3: The First Set Bit")
 print("First ON switch is at position:", position)
 
 
@@ -81,8 +78,7 @@ print("First ON switch is at position:", position)
 # PART 4 — BUILDING A BIT MASK
 # ------------------------------------------------
 
-print("
-PART 4: Building a Bit Mask")
+print("PART 4: Building a Bit Mask")
 
 for i in range(6):
     mask = 1 << i
@@ -102,8 +98,7 @@ switch_names = [
     "Security Camera"
 ]
 
-print("
-PART 5: Check if the Nth Bit is Set")
+print("PART 5: Check if the Nth Bit is Set")
 
 for i in range(6):
     mask = 1 << i
@@ -116,8 +111,7 @@ for i in range(6):
 
 # FINAL SUMMARY
 
-print("
-================================")
+print("================================")
 print("SMART SWITCH SUMMARY")
 print("================================")
 print("Switch Value:", switch_value)
