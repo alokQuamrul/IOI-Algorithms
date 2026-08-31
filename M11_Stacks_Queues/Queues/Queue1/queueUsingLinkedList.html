@@ -1,0 +1,2366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Queue Data Structure — Game Dev Edition</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0a0a0f;
+    --bg-panel: #0f0f1a;
+    --bg-card: #13131f;
+    --bg-code: #080810;
+    --neon-green: #00ff88;
+    --neon-cyan: #00e5ff;
+    --neon-purple: #bf5fff;
+    --neon-orange: #ff6b2b;
+    --neon-yellow: #ffd600;
+    --neon-red: #ff3860;
+    --text-primary: #e8e8f0;
+    --text-muted: #7a7a9a;
+    --border: #1e1e35;
+    --border-bright: #2a2a45;
+    --pixel-size: 2px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 17px;
+    line-height: 1.75;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.07) 2px,
+      rgba(0,0,0,0.07) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Animated grid background */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: relative;
+    text-align: center;
+    padding: 80px 20px 60px;
+    overflow: hidden;
+    border-bottom: 2px solid var(--neon-cyan);
+    z-index: 1;
+  }
+
+  header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,229,255,0.08) 0%, transparent 70%);
+  }
+
+  .header-badge {
+    display: inline-block;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--neon-green);
+    border: 2px solid var(--neon-green);
+    padding: 6px 16px;
+    margin-bottom: 28px;
+    letter-spacing: 2px;
+    animation: blink-border 2s step-end infinite;
+  }
+
+  @keyframes blink-border {
+    0%, 100% { border-color: var(--neon-green); }
+    50% { border-color: transparent; }
+  }
+
+  h1 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(18px, 3.5vw, 36px);
+    color: var(--neon-cyan);
+    line-height: 1.6;
+    letter-spacing: 1px;
+    position: relative;
+    z-index: 1;
+  }
+
+  h1 span {
+    color: var(--neon-green);
+    display: block;
+    font-size: clamp(11px, 2vw, 20px);
+    margin-top: 14px;
+  }
+
+  .header-sub {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-muted);
+    margin-top: 20px;
+    font-size: 14px;
+    letter-spacing: 1px;
+  }
+
+  /* ── LAYOUT ── */
+  .wrapper {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── SIDEBAR NAV ── */
+  aside {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--bg-panel);
+    border-right: 2px solid var(--border-bright);
+    padding: 30px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--neon-cyan) var(--bg-dark);
+  }
+
+  .nav-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: var(--neon-purple);
+    letter-spacing: 2px;
+    padding: 0 20px 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+
+  aside nav a {
+    display: block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 9px 20px;
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+    line-height: 1.4;
+  }
+
+  aside nav a:hover {
+    color: var(--neon-cyan);
+    border-left-color: var(--neon-cyan);
+    background: rgba(0,229,255,0.05);
+  }
+
+  aside nav .nav-section {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 6px;
+    color: var(--neon-orange);
+    letter-spacing: 1px;
+    padding: 16px 20px 6px;
+    text-transform: uppercase;
+  }
+
+  /* ── MAIN CONTENT ── */
+  main {
+    padding: 50px 60px;
+    max-width: 960px;
+  }
+
+  /* ── SECTIONS ── */
+  .section {
+    margin-bottom: 70px;
+  }
+
+  h2 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(12px, 1.8vw, 16px);
+    color: var(--neon-cyan);
+    line-height: 1.7;
+    margin-bottom: 24px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--border-bright);
+    position: relative;
+  }
+
+  h2::before {
+    content: '▶ ';
+    color: var(--neon-green);
+    font-size: 10px;
+  }
+
+  h3 {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 18px;
+    color: var(--neon-green);
+    margin: 30px 0 14px;
+    letter-spacing: 1px;
+  }
+
+  h3::before {
+    content: '// ';
+    color: var(--text-muted);
+  }
+
+  h4 {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 15px;
+    color: var(--neon-orange);
+    margin: 22px 0 10px;
+    letter-spacing: 1px;
+  }
+
+  p {
+    color: var(--text-primary);
+    margin-bottom: 14px;
+    font-weight: 600;
+    font-size: 16.5px;
+  }
+
+  strong { color: var(--neon-yellow); }
+
+  /* ── CONCEPT BOX ── */
+  .concept-box {
+    background: var(--bg-card);
+    border: 2px solid var(--border-bright);
+    border-left: 4px solid var(--neon-cyan);
+    border-radius: 4px;
+    padding: 24px 28px;
+    margin: 24px 0;
+    position: relative;
+  }
+
+  .concept-box::before {
+    content: attr(data-label);
+    position: absolute;
+    top: -12px;
+    left: 16px;
+    background: var(--bg-dark);
+    color: var(--neon-cyan);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    padding: 2px 10px;
+    border: 1px solid var(--neon-cyan);
+    letter-spacing: 1px;
+  }
+
+  .concept-box.warn {
+    border-left-color: var(--neon-orange);
+  }
+  .concept-box.warn::before { color: var(--neon-orange); border-color: var(--neon-orange); }
+
+  .concept-box.tip {
+    border-left-color: var(--neon-green);
+  }
+  .concept-box.tip::before { color: var(--neon-green); border-color: var(--neon-green); }
+
+  .concept-box.game {
+    border-left-color: var(--neon-purple);
+  }
+  .concept-box.game::before { color: var(--neon-purple); border-color: var(--neon-purple); }
+
+  /* ── QUEUE VISUAL ── */
+  .queue-visual {
+    background: var(--bg-code);
+    border: 2px solid var(--border-bright);
+    border-radius: 4px;
+    padding: 30px;
+    margin: 28px 0;
+    overflow-x: auto;
+  }
+
+  .queue-visual-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+  }
+
+  .queue-track {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 10px;
+  }
+
+  .q-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .q-box {
+    width: 72px;
+    height: 60px;
+    background: var(--bg-panel);
+    border: 2px solid var(--neon-cyan);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--neon-cyan);
+    position: relative;
+    transition: all 0.3s;
+  }
+
+  .q-box.front { border-color: var(--neon-green); color: var(--neon-green); background: rgba(0,255,136,0.05); }
+  .q-box.rear  { border-color: var(--neon-orange); color: var(--neon-orange); background: rgba(255,107,43,0.05); }
+
+  .q-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 6px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+  .q-label.fl { color: var(--neon-green); }
+  .q-label.rl { color: var(--neon-orange); }
+
+  .q-arrow {
+    width: 32px;
+    height: 2px;
+    background: var(--text-muted);
+    position: relative;
+    flex-shrink: 0;
+    margin-top: -26px;
+  }
+  .q-arrow::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: -4px;
+    border-left: 8px solid var(--text-muted);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+  }
+
+  .q-pointer {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-top: -26px;
+  }
+
+  .enqueue-arrow {
+    display: flex;
+    align-items: center;
+    margin-top: -26px;
+    flex-shrink: 0;
+  }
+  .enqueue-arrow span {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 6px;
+    color: var(--neon-orange);
+    writing-mode: horizontal-tb;
+    letter-spacing: 1px;
+  }
+
+  /* ── OPERATION TABLE ── */
+  .op-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+  }
+
+  .op-table th {
+    background: var(--bg-code);
+    color: var(--neon-cyan);
+    padding: 12px 16px;
+    text-align: left;
+    border: 1px solid var(--border-bright);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    letter-spacing: 1px;
+  }
+
+  .op-table td {
+    padding: 11px 16px;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    vertical-align: top;
+  }
+
+  .op-table tr:hover td { background: rgba(0,229,255,0.04); }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 6px;
+  }
+  .tag-green { background: rgba(0,255,136,0.15); color: var(--neon-green); }
+  .tag-cyan  { background: rgba(0,229,255,0.15); color: var(--neon-cyan); }
+  .tag-orange{ background: rgba(255,107,43,0.15); color: var(--neon-orange); }
+
+  /* ── CODE BLOCKS ── */
+  .code-container {
+    margin: 24px 0;
+    border: 2px solid var(--border-bright);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-panel);
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border-bright);
+  }
+
+  .code-lang {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    letter-spacing: 1px;
+  }
+
+  .code-lang.python { color: var(--neon-yellow); }
+  .code-lang.cpp    { color: var(--neon-cyan); }
+
+  .code-dots { display: flex; gap: 6px; }
+  .code-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+  .code-dot:nth-child(1) { background: var(--neon-red); }
+  .code-dot:nth-child(2) { background: var(--neon-yellow); }
+  .code-dot:nth-child(3) { background: var(--neon-green); }
+
+  .copy-btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 6px;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid var(--border-bright);
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+    white-space: nowrap;
+  }
+
+  .copy-btn:hover {
+    color: var(--neon-cyan);
+    border-color: var(--neon-cyan);
+    background: rgba(0,229,255,0.06);
+  }
+
+  .copy-btn.copied {
+    color: var(--neon-green);
+    border-color: var(--neon-green);
+    background: rgba(0,255,136,0.08);
+  }
+
+  pre {
+    background: var(--bg-code);
+    padding: 28px;
+    overflow-x: auto;
+    margin: 0;
+    tab-size: 4;
+    scrollbar-width: thin;
+    scrollbar-color: var(--neon-cyan) var(--bg-dark);
+  }
+
+  code {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13.5px;
+    line-height: 1.8;
+    display: block;
+    white-space: pre;
+  }
+
+  /* Syntax highlighting */
+  .kw  { color: var(--neon-purple); font-weight: bold; }   /* keywords */
+  .kw2 { color: var(--neon-cyan); }                         /* type keywords */
+  .fn  { color: var(--neon-green); }                        /* functions */
+  .str { color: var(--neon-orange); }                       /* strings */
+  .num { color: var(--neon-yellow); }                       /* numbers */
+  .cm  { color: #4a4a6a; font-style: italic; }             /* comments */
+  .cls { color: #ff79c6; }                                  /* class names */
+  .op  { color: var(--text-muted); }                        /* operators */
+  .self{ color: #8be9fd; }                                  /* self/this */
+  .deco{ color: var(--neon-orange); }                       /* decorators */
+
+  /* ── TABS ── */
+  .tabs { margin: 24px 0; }
+
+  .tab-buttons {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--border-bright);
+  }
+
+  .tab-btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    padding: 10px 20px;
+    cursor: pointer;
+    background: var(--bg-panel);
+    border: 2px solid var(--border-bright);
+    border-bottom: none;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    margin-bottom: -2px;
+  }
+
+  .tab-btn.active {
+    color: var(--neon-cyan);
+    border-color: var(--neon-cyan);
+    background: var(--bg-code);
+    border-bottom: 2px solid var(--bg-code);
+  }
+
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* ── GAME USE CASE CARDS ── */
+  .game-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 18px;
+    margin: 24px 0;
+  }
+
+  .game-card {
+    background: var(--bg-card);
+    border: 2px solid var(--border-bright);
+    border-radius: 4px;
+    padding: 22px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .game-card:hover {
+    border-color: var(--neon-purple);
+    transform: translateY(-2px);
+  }
+
+  .game-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--neon-purple), var(--neon-cyan));
+  }
+
+  .game-card-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .game-card h4 {
+    color: var(--neon-purple);
+    margin-top: 0;
+    font-size: 14px;
+  }
+
+  .game-card h4::before { content: none; }
+
+  .game-card p {
+    font-size: 14.5px;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  /* ── REAL WORLD CARDS ── */
+  .rw-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
+    margin: 24px 0;
+  }
+
+  .rw-card {
+    background: var(--bg-card);
+    border: 2px solid var(--border-bright);
+    border-radius: 4px;
+    padding: 22px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .rw-card:hover { border-color: var(--neon-cyan); }
+
+  .rw-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-green));
+  }
+
+  .rw-card-num {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 22px;
+    color: var(--border-bright);
+    position: absolute;
+    top: 14px;
+    right: 18px;
+  }
+
+  .rw-card h4 { color: var(--neon-cyan); margin-top: 0; }
+  .rw-card h4::before { content: none; }
+  .rw-card p { font-size: 14.5px; color: var(--text-muted); margin: 0; }
+
+  /* ── COMPLEXITY BOX ── */
+  .complexity-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin: 20px 0;
+  }
+
+  .complexity-item {
+    background: var(--bg-code);
+    border: 1px solid var(--border-bright);
+    border-radius: 4px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .complexity-op {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .complexity-val {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 13px;
+    color: var(--neon-green);
+  }
+
+  /* ── LINKED LIST VISUAL ── */
+  .ll-visual {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+    padding: 20px 0;
+    flex-wrap: nowrap;
+  }
+
+  .ll-node {
+    display: flex;
+    flex-shrink: 0;
+  }
+
+  .ll-box {
+    display: flex;
+    border: 2px solid var(--neon-cyan);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .ll-data {
+    padding: 10px 14px;
+    background: rgba(0,229,255,0.08);
+    color: var(--neon-cyan);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    font-weight: bold;
+    border-right: 2px solid var(--neon-cyan);
+  }
+
+  .ll-next {
+    padding: 10px 12px;
+    background: rgba(191,95,255,0.08);
+    color: var(--neon-purple);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+  }
+
+  .ll-arrow {
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+    color: var(--text-muted);
+    font-size: 20px;
+    font-family: monospace;
+    flex-shrink: 0;
+  }
+
+  .ll-null {
+    padding: 10px 14px;
+    border: 2px solid var(--neon-red);
+    color: var(--neon-red);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .ll-pointer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 6px;
+    flex-shrink: 0;
+  }
+
+  .ll-ptr-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 6px;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  /* ── STEP LIST ── */
+  .step-list {
+    list-style: none;
+    margin: 16px 0;
+  }
+
+  .step-list li {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .step-list li:last-child { border-bottom: none; }
+
+  .step-num {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: var(--neon-green);
+    background: rgba(0,255,136,0.1);
+    border: 1px solid var(--neon-green);
+    padding: 4px 7px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 50px 20px;
+    border-top: 2px solid var(--border-bright);
+    position: relative;
+    z-index: 1;
+  }
+
+  .footer-logo {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: var(--neon-green);
+    margin-bottom: 12px;
+  }
+
+  .footer-text {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .wrapper { grid-template-columns: 1fr; }
+    aside { display: none; }
+    main { padding: 30px 20px; }
+    h2 { font-size: 11px; }
+    h1 { font-size: 14px; }
+  }
+
+  /* ── SCROLL BAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-dark); }
+  ::-webkit-scrollbar-thumb { background: var(--neon-cyan); border-radius: 3px; }
+
+  /* Animations */
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    92% { opacity: 1; }
+    93% { opacity: 0.7; }
+    94% { opacity: 1; }
+    96% { opacity: 0.8; }
+    97% { opacity: 1; }
+  }
+
+  .section { animation: none; }
+  h1 { animation: flicker 8s infinite; }
+
+  .highlight-box {
+    background: rgba(0,229,255,0.05);
+    border: 1px solid rgba(0,229,255,0.2);
+    border-radius: 3px;
+    padding: 3px 8px;
+    color: var(--neon-cyan);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.88em;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-badge">PLAYER 1 READY</div>
+  <h1>QUEUE DATA STRUCTURE<span>A Game Developer's Guide &mdash; Python &amp; C++</span></h1>
+  <p class="header-sub">// FIFO · LINKED LIST IMPLEMENTATION · GAME DEV APPLICATIONS · REAL WORLD USE</p>
+</header>
+
+<div class="wrapper">
+
+<!-- ── SIDEBAR ── -->
+<aside>
+  <div class="nav-title">LEVEL MAP</div>
+  <nav>
+    <span class="nav-section">Basics</span>
+    <a href="#intro">01 &mdash; What is a Queue?</a>
+    <a href="#fifo">02 &mdash; FIFO Principle</a>
+    <a href="#operations">03 &mdash; Core Operations</a>
+    <a href="#complexity">04 &mdash; Time Complexity</a>
+
+    <span class="nav-section">Deep Dive</span>
+    <a href="#linked-list">05 &mdash; Linked List Theory</a>
+    <a href="#python-impl">06 &mdash; Python Implementation</a>
+    <a href="#cpp-impl">07 &mdash; C++ Implementation</a>
+    <a href="#dll-impl">08 &mdash; Doubly Linked List (Beginner)</a>
+
+    <span class="nav-section">Game Dev</span>
+    <a href="#game-uses">09 &mdash; Queue in Games</a>
+    <a href="#game-code">10 &mdash; Game Code Examples</a>
+
+    <span class="nav-section">Beyond</span>
+    <a href="#real-world">11 &mdash; Real World Uses</a>
+    <a href="#summary">12 &mdash; Summary</a>
+  </nav>
+</aside>
+
+<!-- ── MAIN ── -->
+<main>
+
+<!-- ══════════════════════════════════ -->
+<!-- 01 · WHAT IS A QUEUE              -->
+<!-- ══════════════════════════════════ -->
+<section class="section" id="intro">
+  <h2>01 — WHAT IS A QUEUE?</h2>
+  <p>
+    A <strong>Queue</strong> is a linear data structure that stores elements in a sequential order and follows the
+    <strong>First In, First Out (FIFO)</strong> principle — the first element added is the first one to be removed.
+  </p>
+  <p>
+    Think of it exactly like a queue in real life: a line of players waiting to respawn in a multiplayer game.
+    The first player who died gets to respawn first. Nobody cuts in line (well, unless there's a priority queue — but that's another story!).
+  </p>
+
+  <div class="queue-visual">
+    <div class="queue-visual-title">// QUEUE VISUALIZATION — ENQUEUE from REAR, DEQUEUE from FRONT</div>
+    <div class="queue-track">
+
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-right:4px;flex-shrink:0;">
+        <div style="font-family:'Press Start 2P',monospace;font-size:7px;color:var(--neon-orange);letter-spacing:1px;margin-bottom:2px;">ENQUEUE →</div>
+        <div style="width:0;height:0;border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:14px solid var(--neon-orange);"></div>
+      </div>
+
+      <div class="q-node">
+        <div class="q-box rear">D</div>
+        <div class="q-label rl">REAR</div>
+      </div>
+      <div class="q-arrow"></div>
+      <div class="q-node">
+        <div class="q-box">C</div>
+        <div class="q-label">&nbsp;</div>
+      </div>
+      <div class="q-arrow"></div>
+      <div class="q-node">
+        <div class="q-box">B</div>
+        <div class="q-label">&nbsp;</div>
+      </div>
+      <div class="q-arrow"></div>
+      <div class="q-node">
+        <div class="q-box front">A</div>
+        <div class="q-label fl">FRONT</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-left:4px;flex-shrink:0;">
+        <div style="font-family:'Press Start 2P',monospace;font-size:7px;color:var(--neon-green);letter-spacing:1px;margin-bottom:2px;">→ DEQUEUE</div>
+        <div style="width:0;height:0;border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:14px solid var(--neon-green);"></div>
+      </div>
+
+    </div>
+    <div style="margin-top:16px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-muted);">
+      Elements: A (entered first) → B → C → D (entered last) &nbsp;|&nbsp; A exits first (FIFO)
+    </div>
+  </div>
+
+  <div class="concept-box" data-label="DEFINITION">
+    <p>A Queue is defined by two pointers: <strong>FRONT</strong> (points to the element to be dequeued next) and <strong>REAR</strong> (points to where the next element will be enqueued). Elements are always added at the rear and removed from the front.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ -->
+<!-- 02 · FIFO                         -->
+<!-- ══════════════════════════════════ -->
+<section class="section" id="fifo">
+  <h2>02 — THE FIFO PRINCIPLE</h2>
+
+  <p>
+    <strong>FIFO</strong> stands for <strong>First In, First Out</strong>.
+    This is the defining rule of a queue: whatever enters first, leaves first. No skipping. No shortcuts.
+  </p>
+
+  <div class="concept-box game" data-label="GAME ANALOGY">
+    <p>
+      🎮 Imagine a match queue in an online game like <strong>League of Legends</strong>. When you hit "Find Match",
+      you join a queue. The server processes players in the order they queued — the player who queued first gets matched first.
+      This is pure FIFO in action!
+    </p>
+  </div>
+
+  <h3>FIFO vs LIFO</h3>
+  <table class="op-table">
+    <thead>
+      <tr>
+        <th>Property</th>
+        <th>Queue (FIFO)</th>
+        <th>Stack (LIFO)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Full form</td><td>First In, First Out</td><td>Last In, First Out</td></tr>
+      <tr><td>Insertion</td><td>From the REAR</td><td>From the TOP</td></tr>
+      <tr><td>Deletion</td><td>From the FRONT</td><td>From the TOP</td></tr>
+      <tr><td>Game use</td><td>Matchmaking, NPC AI turns</td><td>Undo/Redo system</td></tr>
+      <tr><td>Real use</td><td>OS Scheduling, Printing</td><td>Browser back button</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ══════════════════════════════════ -->
+<!-- 03 · CORE OPERATIONS              -->
+<!-- ══════════════════════════════════ -->
+<section class="section" id="operations">
+  <h2>03 — CORE OPERATIONS</h2>
+
+  <table class="op-table">
+    <thead>
+      <tr>
+        <th>Operation</th>
+        <th>Description</th>
+        <th>Time (Linked List)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="tag tag-green">enqueue(x)</span></td>
+        <td>Insert element x at the REAR of the queue</td>
+        <td><span class="tag tag-green">O(1)</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-orange">dequeue()</span></td>
+        <td>Remove and return the FRONT element</td>
+        <td><span class="tag tag-green">O(1)</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-cyan">peek() / front()</span></td>
+        <td>Return the FRONT element without removing it</td>
+        <td><span class="tag tag-green">O(1)</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-cyan">is_empty()</span></td>
+        <td>Check whether the queue has no elements</td>
+        <td><span class="tag tag-green">O(1)</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-cyan">size()</span></td>
+        <td>Return the number of elements in the queue</td>
+        <td><span class="tag tag-green">O(1)</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Step-by-Step: Enqueue &amp; Dequeue</h3>
+  <ul class="step-list">
+    <li><span class="step-num">01</span> <span><strong>Enqueue</strong>: Create a new node. If queue is empty, both FRONT and REAR point to it. Otherwise, link the current REAR's next pointer to the new node, then move REAR to the new node.</span></li>
+    <li><span class="step-num">02</span> <span><strong>Dequeue</strong>: If queue is empty, raise an error (underflow). Otherwise, save FRONT's data, move FRONT to FRONT.next. If FRONT becomes NULL, also set REAR to NULL.</span></li>
+    <li><span class="step-num">03</span> <span><strong>Peek</strong>: Simply return the data stored at the FRONT node without modifying any pointers.</span></li>
+    <li><span class="step-num">04</span> <span><strong>Is Empty</strong>: Return true if FRONT is NULL (or FRONT and REAR are both NULL).</span></li>
+  </ul>
+</section>
+
+<!-- ══════════════════════════════════ -->
+<!-- 04 · COMPLEXITY                   -->
+<!-- ══════════════════════════════════ -->
+<section class="section" id="complexity">
+  <h2>04 — TIME &amp; SPACE COMPLEXITY</h2>
+
+  <div class="complexity-grid">
+    <div class="complexity-item">
+      <div class="complexity-op">Enqueue</div>
+      <div class="complexity-val">O(1)</div>
+    </div>
+    <div class="complexity-item">
+      <div class="complexity-op">Dequeue</div>
+      <div class="complexity-val">O(1)</div>
+    </div>
+    <div class="complexity-item">
+      <div class="complexity-op">Peek</div>
+      <div class="complexity-val">O(1)</div>
+    </div>
+    <div class="complexity-item">
+      <div class="complexity-op">Is Empty</div>
+      <div class="complexity-val">O(1)</div>
+    </div>
+    <div class="complexity-item">
+      <div class="complexity-op">Size</div>
+      <div class="complexity-val">O(1)</div>
+    </div>
+    <div class="complexity-item">
+      <div class="complexity-op">Space</div>
+      <div class="complexity-val">O(n)</div>
+    </div>
+  </div>
+
+  <div class="concept-box tip" data-label="WHY O(1)?">
+    <p>
+      With a linked list implementation, we keep two pointers: FRONT and REAR. Since we always insert at REAR and delete at FRONT — and we have direct access to both — no traversal is ever needed. Every operation touches only the end points. This gives us a perfect O(1) for all core operations!
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ -->
+<!-- 05 · LINKED LIST THEORY           -->
+<!-- ══════════════════════════════════ -->
+<section class="section" id="linked-list">
+  <h2>05 — IMPLEMENTING QUEUE USING LINKED LIST</h2>
+
+  <p>
+    A queue can be implemented with arrays or linked lists. We choose <strong>linked lists</strong> because:
+  </p>
+  <ul class="step-list">
+    <li><span class="step-num">✔</span><span><strong>Dynamic size</strong> — no need to pre-allocate memory. The queue grows and shrinks as needed.</span></li>
+    <li><span class="step-num">✔</span><span><strong>No overflow</strong> — unlike a static array queue, a linked list queue won't overflow until your system runs out of memory.</span></li>
+    <li><span class="step-num">✔</span><span><strong>True O(1) dequeue</strong> — array-based queues need shifting elements (O(n)), unless using circular arrays. Linked lists avoid this entirely.</span></li>
+  </ul>
+
+  <h3>Structure of Each Node</h3>
+  <div class="queue-visual">
+    <div class="queue-visual-title">// LINKED LIST NODE STRUCTURE</div>
+    <div class="ll-visual">
+      <div style="margin-right:24px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-muted);">HEAD (FRONT)</div>
+      <div style="width:0;height:0;border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:12px solid var(--neon-green);margin-right:10px;flex-shrink:0;"></div>
+
+      <div class="ll-node">
+        <div class="ll-box">
+          <div class="ll-data">10</div>
+          <div class="ll-next">next ●</div>
+        </div>
+      </div>
+      <div class="ll-arrow" style="font-size:22px;color:var(--text-muted);padding:0 6px;flex-shrink:0;">→</div>
+
+      <div class="ll-node">
+        <div class="ll-box">
+          <div class="ll-data">20</div>
+          <div class="ll-next">next ●</div>
+        </div>
+      </div>
+      <div class="ll-arrow" style="font-size:22px;color:var(--text-muted);padding:0 6px;flex-shrink:0;">→</div>
+
+      <div class="ll-node">
+        <div class="ll-box">
+          <div class="ll-data">30</div>
+          <div class="ll-next">next ●</div>
+        </div>
+      </div>
+      <div class="ll-arrow" style="font-size:22px;color:var(--text-muted);padding:0 6px;flex-shrink:0;">→</div>
+
+      <div class="ll-null">NULL</div>
+
+      <div style="margin-left:10px;width:0;height:0;border-top:8px solid transparent;border-bottom:8px solid transparent;border-right:12px solid var(--neon-orange);flex-shrink:0;"></div>
+      <div style="margin-left:6px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-muted);flex-shrink:0;">TAIL (REAR)</div>
+    </div>
+    <div style="margin-top:14px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-muted);">
+      Each node holds: <span style="color:var(--neon-cyan)">data</span> + <span style="color:var(--neon-purple)">next pointer</span>
+      &nbsp;|&nbsp; 10 was enqueued first → dequeued first &nbsp;|&nbsp; 30 was enqueued last
+    </div>
+  </div>
+
+  <div class="concept-box" data-label="NODE ANATOMY">
+    <p>Each node in the linked list contains:</p>
+    <p><strong>data</strong> — The actual value stored (could be an int, a game object, a command, etc.)</p>
+    <p><strong>next</strong> — A pointer/reference to the next node in the queue. The last node's next is NULL (or None in Python).</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ -->
+<!-- 06 · PYTHON IMPLEMENTATION        -->
+<!-- ══════════════════════════════════ -->
+<section class="section" id="python-impl">
+  <h2>06 — PYTHON IMPLEMENTATION</h2>
+
+  <p>
+    Below is a complete, clean implementation of a Queue using a <strong>singly linked list in Python</strong>.
+    Every method is documented with comments so you know exactly what's happening at each step.
+  </p>
+
+  <div class="code-container">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      <div class="code-lang python">PYTHON 3 · queue_linkedlist.py</div>
+      <div></div>
+    </div>
+    <pre><code><span class="cm"># ─────────────────────────────────────────────────────────────────
+#  Queue Implementation Using Linked List — Python
+#  Each node holds data + a pointer to the next node.
+#  FRONT  → where elements leave (dequeue)
+#  REAR   → where elements enter (enqueue)
+# ─────────────────────────────────────────────────────────────────</span>
+
+
+<span class="cm"># ── NODE CLASS ──────────────────────────────────────────────────</span>
+<span class="kw">class</span> <span class="cls">Node</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="self">self</span>, data):
+        <span class="self">self</span>.data = data   <span class="cm"># Value stored in this node</span>
+        <span class="self">self</span>.next = <span class="kw2">None</span>   <span class="cm"># Pointer to next node (None = end of list)</span>
+
+
+<span class="cm"># ── QUEUE CLASS ─────────────────────────────────────────────────</span>
+<span class="kw">class</span> <span class="cls">Queue</span>:
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="self">self</span>):
+        <span class="self">self</span>.front = <span class="kw2">None</span>  <span class="cm"># Points to the FRONT node (dequeue here)</span>
+        <span class="self">self</span>.rear  = <span class="kw2">None</span>  <span class="cm"># Points to the REAR  node (enqueue here)</span>
+        <span class="self">self</span>._size = <span class="num">0</span>     <span class="cm"># Track size for O(1) size queries</span>
+
+    <span class="cm"># ── IS EMPTY ────────────────────────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">is_empty</span>(<span class="self">self</span>):
+        <span class="str">"""Return True if the queue has no elements."""</span>
+        <span class="kw">return</span> <span class="self">self</span>.front <span class="kw">is</span> <span class="kw2">None</span>
+
+    <span class="cm"># ── SIZE ────────────────────────────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">size</span>(<span class="self">self</span>):
+        <span class="str">"""Return the number of elements currently in the queue."""</span>
+        <span class="kw">return</span> <span class="self">self</span>._size
+
+    <span class="cm"># ── ENQUEUE ─────────────────────────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">enqueue</span>(<span class="self">self</span>, data):
+        <span class="str">"""Insert an element at the REAR of the queue. O(1)."""</span>
+        new_node = <span class="cls">Node</span>(data)          <span class="cm"># 1. Create a new node</span>
+
+        <span class="kw">if</span> <span class="self">self</span>.<span class="fn">is_empty</span>():
+            <span class="cm"># 2a. Queue was empty — front & rear both point to new node</span>
+            <span class="self">self</span>.front = new_node
+            <span class="self">self</span>.rear  = new_node
+        <span class="kw">else</span>:
+            <span class="cm"># 2b. Link current rear to new node, then advance rear</span>
+            <span class="self">self</span>.rear.next = new_node
+            <span class="self">self</span>.rear      = new_node
+
+        <span class="self">self</span>._size += <span class="num">1</span>                 <span class="cm"># 3. Increment size counter</span>
+        <span class="fn">print</span>(<span class="str">f"Enqueued: {data}"</span>)
+
+    <span class="cm"># ── DEQUEUE ─────────────────────────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">dequeue</span>(<span class="self">self</span>):
+        <span class="str">"""Remove and return the FRONT element. O(1)."""</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="fn">is_empty</span>():
+            <span class="fn">print</span>(<span class="str">"Queue Underflow! Cannot dequeue from empty queue."</span>)
+            <span class="kw">return</span> <span class="kw2">None</span>
+
+        removed_data = <span class="self">self</span>.front.data  <span class="cm"># 1. Save front's data</span>
+        <span class="self">self</span>.front = <span class="self">self</span>.front.next   <span class="cm"># 2. Move front pointer forward</span>
+
+        <span class="kw">if</span> <span class="self">self</span>.front <span class="kw">is</span> <span class="kw2">None</span>:
+            <span class="cm"># 3. Queue is now empty — also reset rear to None</span>
+            <span class="self">self</span>.rear = <span class="kw2">None</span>
+
+        <span class="self">self</span>._size -= <span class="num">1</span>                 <span class="cm"># 4. Decrement size counter</span>
+        <span class="fn">print</span>(<span class="str">f"Dequeued: {removed_data}"</span>)
+        <span class="kw">return</span> removed_data
+
+    <span class="cm"># ── PEEK ────────────────────────────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">peek</span>(<span class="self">self</span>):
+        <span class="str">"""Return the FRONT element without removing it. O(1)."""</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="fn">is_empty</span>():
+            <span class="fn">print</span>(<span class="str">"Queue is empty — nothing to peek at."</span>)
+            <span class="kw">return</span> <span class="kw2">None</span>
+        <span class="kw">return</span> <span class="self">self</span>.front.data
+
+    <span class="cm"># ── DISPLAY ─────────────────────────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">display</span>(<span class="self">self</span>):
+        <span class="str">"""Print all elements from front to rear."""</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="fn">is_empty</span>():
+            <span class="fn">print</span>(<span class="str">"Queue is empty."</span>)
+            <span class="kw">return</span>
+        current = <span class="self">self</span>.front
+        elements = []
+        <span class="kw">while</span> current:
+            elements.<span class="fn">append</span>(<span class="fn">str</span>(current.data))
+            current = current.next
+        <span class="fn">print</span>(<span class="str">"Queue [FRONT → REAR]:"</span>, <span class="str">" → "</span>.<span class="fn">join</span>(elements))
+
+
+<span class="cm"># ── DRIVER CODE ─────────────────────────────────────────────────</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    q = <span class="cls">Queue</span>()
+
+    <span class="cm"># Enqueue players into a respawn queue</span>
+    q.<span class="fn">enqueue</span>(<span class="str">"Player_Alpha"</span>)
+    q.<span class="fn">enqueue</span>(<span class="str">"Player_Beta"</span>)
+    q.<span class="fn">enqueue</span>(<span class="str">"Player_Gamma"</span>)
+    q.<span class="fn">enqueue</span>(<span class="str">"Player_Delta"</span>)
+
+    q.<span class="fn">display</span>()
+    <span class="fn">print</span>(<span class="str">f"Queue size : {q.size()}"</span>)
+    <span class="fn">print</span>(<span class="str">f"Front item : {q.peek()}"</span>)
+
+    <span class="fn">print</span>(<span class="str">"\n--- Processing Respawn Queue ---"</span>)
+    q.<span class="fn">dequeue</span>()
+    q.<span class="fn">dequeue</span>()
+    q.<span class="fn">display</span>()
+
+    <span class="fn">print</span>(<span class="str">f"\nIs queue empty? {q.is_empty()}"</span>)
+    q.<span class="fn">dequeue</span>()
+    q.<span class="fn">dequeue</span>()
+    q.<span class="fn">dequeue</span>()  <span class="cm"># This will trigger underflow message</span></code></pre>
+  </div>
+
+  <h3>Expected Output</h3>
+  <div class="code-container">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      <div class="code-lang python">OUTPUT</div>
+      <div></div>
+    </div>
+    <pre><code><span class="cm">Enqueued: Player_Alpha
+Enqueued: Player_Beta
+Enqueued: Player_Gamma
+Enqueued: Player_Delta
+Queue [FRONT → REAR]: Player_Alpha → Player_Beta → Player_Gamma → Player_Delta
+Queue size : 4
+Front item : Player_Alpha
+
+--- Processing Respawn Queue ---
+Dequeued: Player_Alpha
+Dequeued: Player_Beta
+Queue [FRONT → REAR]: Player_Gamma → Player_Delta
+
+Is queue empty? False
+Dequeued: Player_Gamma
+Dequeued: Player_Delta
+Queue Underflow! Cannot dequeue from empty queue.</span></code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ -->
+<!-- 07 · C++ IMPLEMENTATION           -->
+<!-- ══════════════════════════════════ -->
+<section class="section" id="cpp-impl">
+  <h2>07 — C++ IMPLEMENTATION</h2>
+
+  <p>
+    Here is the equivalent implementation in <strong>C++ using a singly linked list</strong>,
+    using a struct for the node and a class for the Queue. This uses raw pointers with proper memory management.
+  </p>
+
+  <div class="code-container">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      <div class="code-lang cpp">C++17 · queue_linkedlist.cpp</div>
+      <div></div>
+    </div>
+    <pre><code><span class="cm">// ─────────────────────────────────────────────────────────────────
+//  Queue Implementation Using Linked List — C++
+//  FRONT  → dequeue end   |   REAR → enqueue end
+// ─────────────────────────────────────────────────────────────────</span>
+
+<span class="kw">#include</span> <span class="str">&lt;iostream&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string&gt;</span>
+<span class="kw">using namespace</span> std;
+
+
+<span class="cm">// ── NODE STRUCTURE ──────────────────────────────────────────────</span>
+<span class="kw">struct</span> <span class="cls">Node</span> {
+    string data;   <span class="cm">// Value stored in this node</span>
+    <span class="cls">Node</span>*  next;   <span class="cm">// Pointer to next node (nullptr = end)</span>
+
+    <span class="cm">// Constructor: initialise data, set next to nullptr</span>
+    <span class="cls">Node</span>(string val) : data(val), next(<span class="kw2">nullptr</span>) {}
+};
+
+
+<span class="cm">// ── QUEUE CLASS ─────────────────────────────────────────────────</span>
+<span class="kw">class</span> <span class="cls">Queue</span> {
+<span class="kw">private</span>:
+    <span class="cls">Node</span>* front;   <span class="cm">// Pointer to the FRONT node</span>
+    <span class="cls">Node</span>* rear;    <span class="cm">// Pointer to the REAR  node</span>
+    <span class="kw2">int</span>   _size;   <span class="cm">// Number of elements</span>
+
+<span class="kw">public</span>:
+
+    <span class="cm">// Constructor — initialise an empty queue</span>
+    <span class="cls">Queue</span>() : front(<span class="kw2">nullptr</span>), rear(<span class="kw2">nullptr</span>), _size(<span class="num">0</span>) {}
+
+    <span class="cm">// Destructor — free all heap-allocated nodes</span>
+    ~<span class="cls">Queue</span>() {
+        <span class="kw">while</span> (!<span class="fn">isEmpty</span>()) {
+            <span class="fn">dequeue</span>();
+        }
+        cout &lt;&lt; <span class="str">"Queue destroyed — memory freed.\n"</span>;
+    }
+
+    <span class="cm">// ── IS EMPTY ──────────────────────────────────────────────</span>
+    <span class="kw2">bool</span> <span class="fn">isEmpty</span>() {
+        <span class="kw">return</span> front == <span class="kw2">nullptr</span>;
+    }
+
+    <span class="cm">// ── SIZE ──────────────────────────────────────────────────</span>
+    <span class="kw2">int</span> <span class="fn">size</span>() {
+        <span class="kw">return</span> _size;
+    }
+
+    <span class="cm">// ── ENQUEUE ───────────────────────────────────────────────</span>
+    <span class="cm">// Insert element at REAR — O(1)</span>
+    <span class="kw2">void</span> <span class="fn">enqueue</span>(string data) {
+        <span class="cls">Node</span>* newNode = <span class="kw">new</span> <span class="cls">Node</span>(data);  <span class="cm">// 1. Allocate new node on heap</span>
+
+        <span class="kw">if</span> (<span class="fn">isEmpty</span>()) {
+            <span class="cm">// 2a. Queue empty — both pointers target new node</span>
+            front = newNode;
+            rear  = newNode;
+        } <span class="kw">else</span> {
+            <span class="cm">// 2b. Chain current rear to new node, advance rear</span>
+            rear->next = newNode;
+            rear       = newNode;
+        }
+
+        _size++;                             <span class="cm">// 3. Increment size</span>
+        cout &lt;&lt; <span class="str">"Enqueued: "</span> &lt;&lt; data &lt;&lt; <span class="str">"\n"</span>;
+    }
+
+    <span class="cm">// ── DEQUEUE ───────────────────────────────────────────────</span>
+    <span class="cm">// Remove and return FRONT element — O(1)</span>
+    string <span class="fn">dequeue</span>() {
+        <span class="kw">if</span> (<span class="fn">isEmpty</span>()) {
+            cout &lt;&lt; <span class="str">"Queue Underflow! Cannot dequeue from empty queue.\n"</span>;
+            <span class="kw">return</span> <span class="str">""</span>;
+        }
+
+        <span class="cls">Node</span>*  temp        = front;         <span class="cm">// 1. Save front pointer</span>
+        string removedData = front->data;  <span class="cm">// 2. Save data to return</span>
+        front              = front->next;  <span class="cm">// 3. Advance front</span>
+
+        <span class="kw">if</span> (front == <span class="kw2">nullptr</span>) {
+            rear = <span class="kw2">nullptr</span>;               <span class="cm">// 4. Queue now empty — reset rear</span>
+        }
+
+        <span class="kw">delete</span> temp;                       <span class="cm">// 5. Free the old front node</span>
+        _size--;                            <span class="cm">// 6. Decrement size</span>
+
+        cout &lt;&lt; <span class="str">"Dequeued: "</span> &lt;&lt; removedData &lt;&lt; <span class="str">"\n"</span>;
+        <span class="kw">return</span> removedData;
+    }
+
+    <span class="cm">// ── PEEK ──────────────────────────────────────────────────</span>
+    <span class="cm">// Return front element without removing — O(1)</span>
+    string <span class="fn">peek</span>() {
+        <span class="kw">if</span> (<span class="fn">isEmpty</span>()) {
+            cout &lt;&lt; <span class="str">"Queue is empty — nothing to peek at.\n"</span>;
+            <span class="kw">return</span> <span class="str">""</span>;
+        }
+        <span class="kw">return</span> front->data;
+    }
+
+    <span class="cm">// ── DISPLAY ───────────────────────────────────────────────</span>
+    <span class="kw2">void</span> <span class="fn">display</span>() {
+        <span class="kw">if</span> (<span class="fn">isEmpty</span>()) {
+            cout &lt;&lt; <span class="str">"Queue is empty.\n"</span>;
+            <span class="kw">return</span>;
+        }
+        cout &lt;&lt; <span class="str">"Queue [FRONT → REAR]: "</span>;
+        <span class="cls">Node</span>* current = front;
+        <span class="kw">while</span> (current != <span class="kw2">nullptr</span>) {
+            cout &lt;&lt; current->data;
+            <span class="kw">if</span> (current->next) cout &lt;&lt; <span class="str">" → "</span>;
+            current = current->next;
+        }
+        cout &lt;&lt; <span class="str">"\n"</span>;
+    }
+};
+
+
+<span class="cm">// ── MAIN ────────────────────────────────────────────────────────</span>
+<span class="kw2">int</span> <span class="fn">main</span>() {
+    <span class="cls">Queue</span> q;
+
+    <span class="cm">// Simulating a game event queue</span>
+    q.<span class="fn">enqueue</span>(<span class="str">"Player_Alpha"</span>);
+    q.<span class="fn">enqueue</span>(<span class="str">"Player_Beta"</span>);
+    q.<span class="fn">enqueue</span>(<span class="str">"Player_Gamma"</span>);
+    q.<span class="fn">enqueue</span>(<span class="str">"Player_Delta"</span>);
+
+    q.<span class="fn">display</span>();
+    cout &lt;&lt; <span class="str">"Queue size : "</span> &lt;&lt; q.<span class="fn">size</span>()  &lt;&lt; <span class="str">"\n"</span>;
+    cout &lt;&lt; <span class="str">"Front item : "</span> &lt;&lt; q.<span class="fn">peek</span>()  &lt;&lt; <span class="str">"\n\n"</span>;
+
+    cout &lt;&lt; <span class="str">"--- Processing Respawn Queue ---\n"</span>;
+    q.<span class="fn">dequeue</span>();
+    q.<span class="fn">dequeue</span>();
+    q.<span class="fn">display</span>();
+
+    q.<span class="fn">dequeue</span>();
+    q.<span class="fn">dequeue</span>();
+    q.<span class="fn">dequeue</span>();  <span class="cm">// Triggers underflow</span>
+
+    cout &lt;&lt; <span class="str">"Is empty? "</span> &lt;&lt; (q.<span class="fn">isEmpty</span>() ? <span class="str">"Yes"</span> : <span class="str">"No"</span>) &lt;&lt; <span class="str">"\n"</span>;
+
+    <span class="kw">return</span> <span class="num">0</span>;
+    <span class="cm">// Destructor called automatically — frees all memory</span>
+}</code></pre>
+  </div>
+
+  <div class="concept-box warn" data-label="C++ MEMORY NOTE">
+    <p>
+      In C++, every <span class="highlight-box">new Node(...)</span> allocates memory on the heap. You <strong>must</strong> call <span class="highlight-box">delete</span> on removed nodes to avoid memory leaks.
+      Our destructor handles this automatically when the Queue object goes out of scope.
+      In production game code, consider using <span class="highlight-box">std::unique_ptr&lt;Node&gt;</span> (smart pointers) for safer automatic memory management.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ -->
+<!-- 08 · DOUBLY LINKED LIST QUEUE (BEGINNER) -->
+<!-- ══════════════════════════════════ -->
+<section class="section" id="dll-impl">
+  <h2>08 — QUEUE USING DOUBLY LINKED LIST <span style="color:var(--neon-yellow); font-size:0.7em;">(Beginner Friendly)</span></h2>
+
+  <div class="concept-box tip" data-label="FOR BEGINNERS">
+    <p>
+      Don't worry if linked lists still feel new — this section starts from <strong>zero</strong> and explains every single concept before showing code. Take your time with the diagrams. Once the picture in your head is correct, the code becomes easy.
+    </p>
+  </div>
+
+  <h3>What Even Is a "Doubly" Linked List?</h3>
+  <p>
+    In Section 05, we built a queue using a <strong>singly linked list</strong> — where every node only knows about the node that comes <strong>after</strong> it (using a <span class="highlight-box">next</span> pointer).
+  </p>
+  <p>
+    A <strong>Doubly Linked List (DLL)</strong> is almost the same idea, but every node now has <strong>two</strong> pointers instead of one:
+  </p>
+  <ul class="step-list">
+    <li><span class="step-num">→</span><span><strong>next</strong> — points to the node that comes <strong>after</strong> this one (just like before)</span></li>
+    <li><span class="step-num">←</span><span><strong>prev</strong> — a brand new pointer that points to the node that comes <strong>before</strong> this one</span></li>
+  </ul>
+  <p>
+    That's it. That's the entire new idea. Each node can now look both <strong>forward</strong> and <strong>backward</strong>. Think of it like a train: a singly linked list is a train where each carriage only knows which carriage is next. A doubly linked list is a train where every carriage knows the carriage in front of it <em>and</em> the carriage behind it.
+  </p>
+
+  <div class="queue-visual">
+    <div class="queue-visual-title">// DOUBLY LINKED LIST NODE — VISUALIZED</div>
+    <div class="ll-visual">
+      <div style="margin-right:18px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-muted);flex-shrink:0;">None</div>
+
+      <div class="ll-arrow" style="font-size:18px;color:var(--neon-red);padding:0 4px;flex-shrink:0;">←</div>
+
+      <div class="ll-node">
+        <div class="ll-box" style="border-color:var(--neon-purple);">
+          <div class="ll-next" style="border-right:2px solid var(--neon-purple); color:var(--neon-red); background:rgba(255,56,96,0.08);">prev</div>
+          <div class="ll-data" style="border-right:2px solid var(--neon-purple); border-color:var(--neon-purple); color:var(--neon-purple);">20</div>
+          <div class="ll-next" style="color:var(--neon-green); background:rgba(0,255,136,0.08);">next</div>
+        </div>
+      </div>
+
+      <div class="ll-arrow" style="font-size:18px;color:var(--neon-green);padding:0 4px;flex-shrink:0;">→</div>
+
+      <div style="margin-left:6px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-muted);flex-shrink:0;">Other Node</div>
+    </div>
+    <div style="margin-top:14px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-muted);">
+      This single node holds 3 things: a <span style="color:var(--neon-red);">prev</span> pointer (looking backward), the <span style="color:var(--neon-purple);">data</span> (20), and a <span style="color:var(--neon-green);">next</span> pointer (looking forward).
+    </div>
+  </div>
+
+  <h3>Why Bother With "prev" at All?</h3>
+  <p>
+    Great beginner question. For a <strong>basic queue</strong>, you honestly don't strictly <em>need</em> the prev pointer — enqueue and dequeue work fine with just <span class="highlight-box">next</span>, as you saw in Section 06. So why learn this?
+  </p>
+  <ul class="step-list">
+    <li><span class="step-num">①</span><span>It's the <strong>foundation for a Deque</strong> (Double-Ended Queue) — a queue where you can insert/remove from <strong>both</strong> ends. Real engines often need this (e.g. undo-able input buffers).</span></li>
+    <li><span class="step-num">②</span><span>Deleting a node from the <strong>middle or rear</strong> of the list becomes much easier — you don't need to "walk" the whole list to find the node before it.</span></li>
+    <li><span class="step-num">③</span><span>It's one of the most commonly asked data structure topics in coding interviews — so it's worth fully understanding, even if a simple queue doesn't strictly need it.</span></li>
+  </ul>
+
+  <h3>The Big Picture: A Queue Made of DLL Nodes</h3>
+  <p>
+    Just like before, our Queue class will keep track of two things:
+  </p>
+  <ul class="step-list">
+    <li><span class="step-num">F</span><span><strong>front</strong> — pointer to the first node (this is where we remove/dequeue from)</span></li>
+    <li><span class="step-num">R</span><span><strong>rear</strong> — pointer to the last node (this is where we add/enqueue to)</span></li>
+  </ul>
+  <p>The difference from before: now every node also has that backward-facing <span class="highlight-box">prev</span> pointer connecting it to its neighbor.</p>
+
+  <div class="queue-visual">
+    <div class="queue-visual-title">// FULL QUEUE AS A DOUBLY LINKED LIST — FRONT TO REAR</div>
+    <div class="ll-visual">
+      <div style="margin-right:14px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--neon-green);flex-shrink:0; text-align:center;">FRONT<br><span style="color:var(--text-muted); font-size:10px;">(dequeue here)</span></div>
+
+      <div class="ll-null" style="border-color:var(--text-muted); color:var(--text-muted); flex-shrink:0;">None</div>
+
+      <div class="ll-arrow" style="font-size:16px;color:var(--text-muted);padding:0 2px;flex-shrink:0;">⇄</div>
+
+      <div class="ll-node">
+        <div class="ll-box" style="border-color:var(--neon-cyan);">
+          <div class="ll-data">10</div>
+        </div>
+      </div>
+
+      <div class="ll-arrow" style="font-size:16px;color:var(--text-muted);padding:0 2px;flex-shrink:0;">⇄</div>
+
+      <div class="ll-node">
+        <div class="ll-box" style="border-color:var(--neon-cyan);">
+          <div class="ll-data">20</div>
+        </div>
+      </div>
+
+      <div class="ll-arrow" style="font-size:16px;color:var(--text-muted);padding:0 2px;flex-shrink:0;">⇄</div>
+
+      <div class="ll-node">
+        <div class="ll-box" style="border-color:var(--neon-cyan);">
+          <div class="ll-data">30</div>
+        </div>
+      </div>
+
+      <div class="ll-arrow" style="font-size:16px;color:var(--text-muted);padding:0 2px;flex-shrink:0;">⇄</div>
+
+      <div class="ll-null" style="border-color:var(--text-muted); color:var(--text-muted); flex-shrink:0;">None</div>
+
+      <div style="margin-left:14px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--neon-orange);flex-shrink:0; text-align:center;">REAR<br><span style="color:var(--text-muted); font-size:10px;">(enqueue here)</span></div>
+    </div>
+    <div style="margin-top:14px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-muted);">
+      The <span style="color:var(--text-muted);">⇄</span> symbol means there's a link going <strong>both ways</strong> between neighboring nodes (next AND prev). Notice the very first node's prev is None, and the very last node's next is None — there's nothing before the front, and nothing after the rear.
+    </div>
+  </div>
+
+  <h3>Step-by-Step: What Happens During Enqueue?</h3>
+  <p>Let's say our queue currently has <strong>10 → 20</strong> and we enqueue <strong>30</strong>. Here's exactly what happens, one tiny step at a time:</p>
+  <ul class="step-list">
+    <li><span class="step-num">01</span><span>Create a brand new node holding the value <strong>30</strong>. Its <span class="highlight-box">prev</span> and <span class="highlight-box">next</span> both start as <span class="highlight-box">None</span> (it isn't connected to anything yet).</span></li>
+    <li><span class="step-num">02</span><span>Check: is the queue empty? If yes, this new node becomes <em>both</em> front and rear. (Not our case here — queue already has 10 and 20.)</span></li>
+    <li><span class="step-num">03</span><span>Since queue is NOT empty: set <strong>new_node.prev = current rear</strong> (the new node now looks backward at node 20).</span></li>
+    <li><span class="step-num">04</span><span>Set <strong>current rear.next = new_node</strong> (node 20 now looks forward at the new node, 30). The two nodes are now linked both ways!</span></li>
+    <li><span class="step-num">05</span><span>Finally, update <strong>rear = new_node</strong> (the queue now knows 30 is the new last element).</span></li>
+  </ul>
+
+  <h3>Step-by-Step: What Happens During Dequeue?</h3>
+  <p>Now let's remove from the front of <strong>10 → 20 → 30</strong>:</p>
+  <ul class="step-list">
+    <li><span class="step-num">01</span><span>Check: is the queue empty? If yes, there's nothing to remove — show an "underflow" message and stop.</span></li>
+    <li><span class="step-num">02</span><span>Save the data inside the front node (10) so we can return it later.</span></li>
+    <li><span class="step-num">03</span><span>Move <strong>front</strong> forward: <span class="highlight-box">front = front.next</span> (front now points to node 20).</span></li>
+    <li><span class="step-num">04</span><span>If the new front is not None, clear its backward pointer: <span class="highlight-box">front.prev = None</span> (node 20 no longer needs to look back at the now-removed node 10).</span></li>
+    <li><span class="step-num">05</span><span>If the new front IS None (meaning the queue is now totally empty), also set <strong>rear = None</strong>.</span></li>
+    <li><span class="step-num">06</span><span>Return the saved data (10) to whoever called dequeue.</span></li>
+  </ul>
+
+  <div class="concept-box game" data-label="WHY STEP 04 MATTERS">
+    <p>
+      Step 04 is the <strong>only truly new step</strong> compared to a singly linked list! Because each node now has a "prev" pointer, when we remove the front node, the node taking its place needs to forget about the node that used to be in front of it. If we skip this step, we'd have a "dangling" pointer pointing to a removed node — not dangerous in Python (garbage collection cleans it up), but it's still incorrect logic and would cause real bugs in languages like C++.
+    </p>
+  </div>
+
+  <h3>Full Python Implementation — Heavily Commented</h3>
+  <p>
+    Below is the complete code. Every line that's new or different compared to the singly linked list version has extra comments explaining <strong>why</strong> it's there. Read it slowly — there is no rush!
+  </p>
+
+  <div class="code-container">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      <div class="code-lang python">PYTHON 3 · queue_doubly_linkedlist.py</div>
+      <div></div>
+    </div>
+    <pre><code><span class="cm"># ─────────────────────────────────────────────────────────────────
+#  Queue Implementation Using a DOUBLY Linked List — Python
+#  (Beginner-friendly version with extra explanation comments)
+#
+#  Each node now has THREE parts instead of two:
+#    1. data  -> the value stored
+#    2. next  -> pointer to the node AFTER this one  (same as before)
+#    3. prev  -> pointer to the node BEFORE this one (NEW!)
+# ─────────────────────────────────────────────────────────────────</span>
+
+
+<span class="cm"># ── NODE CLASS ──────────────────────────────────────────────────</span>
+<span class="kw">class</span> <span class="cls">Node</span>:
+    <span class="str">"""
+    A single 'box' in our doubly linked list.
+    Imagine it as a train carriage that can see the carriage
+    in front of it AND the carriage behind it.
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="self">self</span>, data):
+        <span class="self">self</span>.data = data    <span class="cm"># The actual value we want to store</span>
+        <span class="self">self</span>.next = <span class="kw2">None</span>    <span class="cm"># Looks FORWARD — towards the rear of the queue</span>
+        <span class="self">self</span>.prev = <span class="kw2">None</span>    <span class="cm"># Looks BACKWARD — towards the front of the queue (NEW!)</span>
+
+
+<span class="cm"># ── QUEUE CLASS (using the doubly linked list) ──────────────────</span>
+<span class="kw">class</span> <span class="cls">Queue</span>:
+    <span class="str">"""
+    A Queue (FIFO) built on top of a doubly linked list.
+    We still only ever touch the FRONT and REAR ends —
+    we never need to walk through the middle of the list.
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="self">self</span>):
+        <span class="self">self</span>.front = <span class="kw2">None</span>   <span class="cm"># The first node — this is where we DEQUEUE from</span>
+        <span class="self">self</span>.rear  = <span class="kw2">None</span>   <span class="cm"># The last node  — this is where we ENQUEUE to</span>
+        <span class="self">self</span>._size = <span class="num">0</span>      <span class="cm"># Keeps count so size() is instant (O(1))</span>
+
+    <span class="cm"># ── IS EMPTY ────────────────────────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">is_empty</span>(<span class="self">self</span>):
+        <span class="str">"""
+        A queue is empty when there is no front node at all.
+        Returns True / False.
+        """</span>
+        <span class="kw">return</span> <span class="self">self</span>.front <span class="kw">is</span> <span class="kw2">None</span>
+
+    <span class="cm"># ── SIZE ────────────────────────────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">size</span>(<span class="self">self</span>):
+        <span class="str">"""Returns how many elements are currently in the queue."""</span>
+        <span class="kw">return</span> <span class="self">self</span>._size
+
+    <span class="cm"># ── ENQUEUE  (add to the REAR) ──────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">enqueue</span>(<span class="self">self</span>, data):
+        <span class="str">"""
+        Adds a new element to the back (rear) of the queue.
+        Time complexity: O(1) — we never search, we only touch
+        the rear pointer directly.
+        """</span>
+        <span class="cm"># STEP 1: Build the new node. It starts completely disconnected —</span>
+        <span class="cm">#         both prev and next are None until we link it below.</span>
+        new_node = <span class="cls">Node</span>(data)
+
+        <span class="kw">if</span> <span class="self">self</span>.<span class="fn">is_empty</span>():
+            <span class="cm"># STEP 2a: Special case — queue was totally empty.</span>
+            <span class="cm">#          This one node becomes BOTH the front and the rear.</span>
+            <span class="self">self</span>.front = new_node
+            <span class="self">self</span>.rear  = new_node
+        <span class="kw">else</span>:
+            <span class="cm"># STEP 2b: Queue already has elements — attach the new node</span>
+            <span class="cm">#          AFTER the current rear node.</span>
+
+            <span class="cm"># (i)  The new node looks BACKWARD at the current rear.</span>
+            <span class="cm">#      This is the "doubly" part that's different from a</span>
+            <span class="cm">#      singly linked list!</span>
+            new_node.prev = <span class="self">self</span>.rear
+
+            <span class="cm"># (ii) The current rear now looks FORWARD at the new node.</span>
+            <span class="self">self</span>.rear.next = new_node
+
+            <span class="cm"># (iii) Finally, move the rear pointer so it now points</span>
+            <span class="cm">#       to our brand-new node — it's the new "last" element.</span>
+            <span class="self">self</span>.rear = new_node
+
+        <span class="self">self</span>._size += <span class="num">1</span>
+        <span class="fn">print</span>(<span class="str">f"Enqueued: {data}"</span>)
+
+    <span class="cm"># ── DEQUEUE  (remove from the FRONT) ────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">dequeue</span>(<span class="self">self</span>):
+        <span class="str">"""
+        Removes and returns the element at the front of the queue.
+        Time complexity: O(1).
+        """</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="fn">is_empty</span>():
+            <span class="cm"># Nothing to remove — this is called "underflow"</span>
+            <span class="fn">print</span>(<span class="str">"Queue Underflow! Cannot dequeue from empty queue."</span>)
+            <span class="kw">return</span> <span class="kw2">None</span>
+
+        <span class="cm"># STEP 1: Remember the data before we lose access to the node.</span>
+        removed_data = <span class="self">self</span>.front.data
+
+        <span class="cm"># STEP 2: Move the front pointer one step forward.</span>
+        <span class="cm">#         The 2nd element becomes the new front.</span>
+        <span class="self">self</span>.front = <span class="self">self</span>.front.next
+
+        <span class="kw">if</span> <span class="self">self</span>.front <span class="kw">is</span> <span class="kw2">None</span>:
+            <span class="cm"># STEP 3a: The queue is now completely empty —</span>
+            <span class="cm">#          there's no new front, so there's no rear either.</span>
+            <span class="self">self</span>.rear = <span class="kw2">None</span>
+        <span class="kw">else</span>:
+            <span class="cm"># STEP 3b: *** THIS LINE IS NEW vs. singly linked list! ***</span>
+            <span class="cm">#          The new front node should no longer look backward</span>
+            <span class="cm">#          at the node we just removed. We clear that link so</span>
+            <span class="cm">#          nothing points to the removed node anymore.</span>
+            <span class="self">self</span>.front.prev = <span class="kw2">None</span>
+
+        <span class="self">self</span>._size -= <span class="num">1</span>
+        <span class="fn">print</span>(<span class="str">f"Dequeued: {removed_data}"</span>)
+        <span class="kw">return</span> removed_data
+
+    <span class="cm"># ── PEEK  (look at front without removing) ──────────────────</span>
+    <span class="kw">def</span> <span class="fn">peek</span>(<span class="self">self</span>):
+        <span class="str">"""Returns the front element's data WITHOUT removing it."""</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="fn">is_empty</span>():
+            <span class="fn">print</span>(<span class="str">"Queue is empty — nothing to peek at."</span>)
+            <span class="kw">return</span> <span class="kw2">None</span>
+        <span class="kw">return</span> <span class="self">self</span>.front.data
+
+    <span class="cm"># ── DISPLAY FORWARD  (front → rear) ─────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">display_forward</span>(<span class="self">self</span>):
+        <span class="str">"""Prints every element starting from front, moving to rear."""</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="fn">is_empty</span>():
+            <span class="fn">print</span>(<span class="str">"Queue is empty."</span>)
+            <span class="kw">return</span>
+        current = <span class="self">self</span>.front          <span class="cm"># Start walking from the front</span>
+        elements = []
+        <span class="kw">while</span> current:                   <span class="cm"># Keep going until we fall off the end (None)</span>
+            elements.<span class="fn">append</span>(<span class="fn">str</span>(current.data))
+            current = current.next       <span class="cm"># Step forward using the 'next' pointer</span>
+        <span class="fn">print</span>(<span class="str">"Front → Rear:"</span>, <span class="str">" ⇄ "</span>.<span class="fn">join</span>(elements))
+
+    <span class="cm"># ── DISPLAY BACKWARD  (rear → front)  *** ONLY POSSIBLE</span>
+    <span class="cm">#     BECAUSE THIS IS A DOUBLY LINKED LIST! *** ─────────────</span>
+    <span class="kw">def</span> <span class="fn">display_backward</span>(<span class="self">self</span>):
+        <span class="str">"""
+        Prints every element starting from the REAR, moving
+        backward to the FRONT. A singly linked list CANNOT do
+        this easily — it would need to restart from the front
+        every single time. We can do it directly because every
+        node remembers what comes before it.
+        """</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="fn">is_empty</span>():
+            <span class="fn">print</span>(<span class="str">"Queue is empty."</span>)
+            <span class="kw">return</span>
+        current = <span class="self">self</span>.rear            <span class="cm"># Start walking from the rear this time</span>
+        elements = []
+        <span class="kw">while</span> current:
+            elements.<span class="fn">append</span>(<span class="fn">str</span>(current.data))
+            current = current.prev       <span class="cm"># Step BACKWARD using the 'prev' pointer</span>
+        <span class="fn">print</span>(<span class="str">"Rear → Front:"</span>, <span class="str">" ⇄ "</span>.<span class="fn">join</span>(elements))
+
+
+<span class="cm"># ── DRIVER CODE — let's test it! ─────────────────────────────────</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    q = <span class="cls">Queue</span>()
+
+    <span class="fn">print</span>(<span class="str">"=== Building a matchmaking queue ==="</span>)
+    q.<span class="fn">enqueue</span>(<span class="str">"Player_One"</span>)
+    q.<span class="fn">enqueue</span>(<span class="str">"Player_Two"</span>)
+    q.<span class="fn">enqueue</span>(<span class="str">"Player_Three"</span>)
+
+    q.<span class="fn">display_forward</span>()    <span class="cm"># Player_One ⇄ Player_Two ⇄ Player_Three</span>
+    q.<span class="fn">display_backward</span>()   <span class="cm"># Player_Three ⇄ Player_Two ⇄ Player_One</span>
+
+    <span class="fn">print</span>(<span class="str">f"\nQueue size : {q.size()}"</span>)
+    <span class="fn">print</span>(<span class="str">f"Front item : {q.peek()}"</span>)
+
+    <span class="fn">print</span>(<span class="str">"\n--- Matching players one by one ---"</span>)
+    q.<span class="fn">dequeue</span>()
+    q.<span class="fn">display_forward</span>()
+
+    q.<span class="fn">dequeue</span>()
+    q.<span class="fn">dequeue</span>()
+    q.<span class="fn">dequeue</span>()  <span class="cm"># This will print the underflow message</span></code></pre>
+  </div>
+
+  <h3>Expected Output</h3>
+  <div class="code-container">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      <div class="code-lang python">OUTPUT</div>
+      <div></div>
+    </div>
+    <pre><code><span class="cm">=== Building a matchmaking queue ===
+Enqueued: Player_One
+Enqueued: Player_Two
+Enqueued: Player_Three
+Front → Rear: Player_One ⇄ Player_Two ⇄ Player_Three
+Rear → Front: Player_Three ⇄ Player_Two ⇄ Player_One
+
+Queue size : 3
+Front item : Player_One
+
+--- Matching players one by one ---
+Dequeued: Player_One
+Front → Rear: Player_Two ⇄ Player_Three
+Dequeued: Player_Two
+Dequeued: Player_Three
+Queue Underflow! Cannot dequeue from empty queue.</span></code></pre>
+  </div>
+
+  <h3>Singly vs Doubly Linked List Queue — Quick Comparison</h3>
+  <table class="op-table">
+    <thead>
+      <tr>
+        <th>Property</th>
+        <th>Singly Linked List Queue</th>
+        <th>Doubly Linked List Queue</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Pointers per node</td><td>1 (next only)</td><td>2 (next AND prev)</td></tr>
+      <tr><td>Memory per node</td><td>Slightly less</td><td>Slightly more (extra pointer)</td></tr>
+      <tr><td>Enqueue</td><td>O(1)</td><td>O(1)</td></tr>
+      <tr><td>Dequeue</td><td>O(1)</td><td>O(1)</td></tr>
+      <tr><td>Traverse backward</td><td>Not possible directly</td><td>Easy — just follow prev</td></tr>
+      <tr><td>Good for plain Queue?</td><td>Yes — simplest option</td><td>Yes — but slightly extra work for no real gain</td></tr>
+      <tr><td>Good foundation for...</td><td>Stacks, simple queues</td><td>Deques, browser history, undo/redo systems</td></tr>
+    </tbody>
+  </table>
+
+  <div class="concept-box warn" data-label="COMMON BEGINNER MISTAKE">
+    <p>
+      The most common bug beginners write in a doubly linked list is <strong>forgetting to update one of the two pointers</strong>. For example, setting <span class="highlight-box">rear.next = new_node</span> but forgetting <span class="highlight-box">new_node.prev = rear</span>. Always ask yourself: "Did I connect this link in BOTH directions?" Whenever you add or remove a node, check both its next and prev neighbors.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ -->
+<!-- 09 · QUEUE IN GAME DEVELOPMENT    -->
+<!-- ══════════════════════════════════ -->
+<section class="section" id="game-uses">
+  <h2>09 — QUEUE IN GAME DEVELOPMENT</h2>
+
+  <p>
+    As a game developer, understanding queues gives you a powerful tool that shows up everywhere in game systems.
+    Here are the most common and exciting places where queues are used in real game engines and games:
+  </p>
+
+  <div class="game-cards">
+    <div class="game-card">
+      <span class="game-card-icon">⚔️</span>
+      <h4>NPC Turn-Based AI</h4>
+      <p>In strategy games (e.g., Fire Emblem, XCOM), NPCs take turns in the order they were queued. A queue manages the turn order fairly and in sequence.</p>
+    </div>
+    <div class="game-card">
+      <span class="game-card-icon">💀</span>
+      <h4>Respawn Queue</h4>
+      <p>In multiplayer shooters (PUBG, Warzone), players who die wait in a respawn queue. The first player to die gets to respawn or spectate first.</p>
+    </div>
+    <div class="game-card">
+      <span class="game-card-icon">🎯</span>
+      <h4>Event / Command Queue</h4>
+      <p>Player inputs (jump, attack, dodge) are buffered in a queue. The game loop processes each event in order — this is the basis of input buffering in fighting games.</p>
+    </div>
+    <div class="game-card">
+      <span class="game-card-icon">🔫</span>
+      <h4>Bullet / Projectile Pool</h4>
+      <p>A queue of pre-spawned bullet objects can be reused instead of creating/destroying constantly, preventing frame drops in fast-paced shooters.</p>
+    </div>
+    <div class="game-card">
+      <span class="game-card-icon">🗺️</span>
+      <h4>Pathfinding (BFS)</h4>
+      <p>Breadth-First Search — the classic shortest-path algorithm — uses a queue at its core. NPCs finding their way through a maze or dungeon use BFS extensively.</p>
+    </div>
+    <div class="game-card">
+      <span class="game-card-icon">🌐</span>
+      <h4>Matchmaking Queue</h4>
+      <p>Online games match players based on rank and queue time. The matchmaking server maintains priority queues to group players with similar skill levels quickly.</p>
+    </div>
+    <div class="game-card">
+      <span class="game-card-icon">📡</span>
+      <h4>Network Packet Queue</h4>
+      <p>In multiplayer games, incoming network packets (positions, actions from other players) are stored in a queue and processed each game tick to maintain sync.</p>
+    </div>
+    <div class="game-card">
+      <span class="game-card-icon">🎬</span>
+      <h4>Animation / Cutscene Queue</h4>
+      <p>Multiple animations (walk → attack → idle) are queued so they play back in the correct order without overlap or skipping.</p>
+    </div>
+  </div>
+
+  <div class="concept-box game" data-label="GAME ENGINE INSIGHT">
+    <p>
+      Game engines like <strong>Unity</strong> and <strong>Unreal Engine</strong> have a main game loop that runs every frame. Event queues (sometimes called "message buses" or "event buses") sit at the heart of this loop — every collision, input, trigger, and state change can be represented as events in a queue, processed in order each frame.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ -->
+<!-- 09 · GAME CODE EXAMPLES           -->
+<!-- ══════════════════════════════════ -->
+<section class="section" id="game-code">
+  <h2>10 — GAME-THEMED CODE EXAMPLES</h2>
+
+  <h3>Example 1 — NPC Turn Manager (Python)</h3>
+  <p>A turn-based game where NPCs take actions in the order they were queued. When an NPC finishes its turn, it re-joins the back of the queue (round-robin style).</p>
+
+  <div class="code-container">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      <div class="code-lang python">PYTHON 3 · npc_turn_manager.py</div>
+      <div></div>
+    </div>
+    <pre><code><span class="cm"># Turn-based NPC queue — simulates a strategy game's turn order</span>
+
+<span class="kw">class</span> <span class="cls">Node</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="self">self</span>, npc_name, hp):
+        <span class="self">self</span>.npc_name = npc_name
+        <span class="self">self</span>.hp       = hp
+        <span class="self">self</span>.next     = <span class="kw2">None</span>
+
+<span class="kw">class</span> <span class="cls">TurnQueue</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="self">self</span>):
+        <span class="self">self</span>.front = <span class="kw2">None</span>
+        <span class="self">self</span>.rear  = <span class="kw2">None</span>
+
+    <span class="kw">def</span> <span class="fn">add_npc</span>(<span class="self">self</span>, name, hp):
+        node = <span class="cls">Node</span>(name, hp)
+        <span class="kw">if</span> <span class="kw">not</span> <span class="self">self</span>.rear:
+            <span class="self">self</span>.front = <span class="self">self</span>.rear = node
+        <span class="kw">else</span>:
+            <span class="self">self</span>.rear.next = node
+            <span class="self">self</span>.rear = node
+
+    <span class="kw">def</span> <span class="fn">next_turn</span>(<span class="self">self</span>):
+        <span class="kw">if</span> <span class="kw">not</span> <span class="self">self</span>.front:
+            <span class="fn">print</span>(<span class="str">"All NPCs are down!"</span>)
+            <span class="kw">return</span>
+
+        <span class="cm"># Dequeue the NPC whose turn it is</span>
+        current = <span class="self">self</span>.front
+        <span class="self">self</span>.front = <span class="self">self</span>.front.next
+        <span class="kw">if</span> <span class="kw">not</span> <span class="self">self</span>.front:
+            <span class="self">self</span>.rear = <span class="kw2">None</span>
+        current.next = <span class="kw2">None</span>
+
+        <span class="cm"># Simulate turn: deal 10 damage to self (just for demo)</span>
+        current.hp -= <span class="num">10</span>
+        <span class="fn">print</span>(<span class="str">f"  [{current.npc_name}] takes their turn! HP remaining: {current.hp}"</span>)
+
+        <span class="cm"># If NPC still alive, re-add to back of queue</span>
+        <span class="kw">if</span> current.hp > <span class="num">0</span>:
+            <span class="self">self</span>.<span class="fn">add_npc</span>(current.npc_name, current.hp)
+        <span class="kw">else</span>:
+            <span class="fn">print</span>(<span class="str">f"  [{current.npc_name}] has been defeated!"</span>)
+
+    <span class="kw">def</span> <span class="fn">has_npcs</span>(<span class="self">self</span>):
+        <span class="kw">return</span> <span class="self">self</span>.front <span class="kw">is</span> <span class="kw">not</span> <span class="kw2">None</span>
+
+
+<span class="cm"># ── Run the simulation ──</span>
+tq = <span class="cls">TurnQueue</span>()
+tq.<span class="fn">add_npc</span>(<span class="str">"Goblin_01"</span>,  <span class="num">30</span>)
+tq.<span class="fn">add_npc</span>(<span class="str">"Orc_Boss"</span>,   <span class="num">20</span>)
+tq.<span class="fn">add_npc</span>(<span class="str">"Skeleton_07"</span>, <span class="num">10</span>)
+
+<span class="fn">print</span>(<span class="str">"=== BATTLE BEGINS ==="</span>)
+round_num = <span class="num">1</span>
+<span class="kw">while</span> tq.<span class="fn">has_npcs</span>():
+    <span class="fn">print</span>(<span class="str">f"\nRound {round_num}"</span>)
+    <span class="cm"># Each round: every currently-queued NPC takes one turn</span>
+    turns_this_round = <span class="num">0</span>
+    temp = tq.front
+    <span class="kw">while</span> temp:
+        turns_this_round += <span class="num">1</span>
+        temp = temp.next
+    <span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(turns_this_round):
+        tq.<span class="fn">next_turn</span>()
+    round_num += <span class="num">1</span>
+    <span class="kw">if</span> round_num > <span class="num">10</span>: <span class="kw">break</span>  <span class="cm"># safety limit</span>
+<span class="fn">print</span>(<span class="str">"\n=== BATTLE OVER ==="</span>)</code></pre>
+  </div>
+
+  <h3>Example 2 — BFS Pathfinding (C++)</h3>
+  <p>
+    Breadth-First Search uses a queue to find the shortest path in a grid — foundational for NPC navigation in dungeons, mazes, and RTS maps.
+  </p>
+
+  <div class="code-container">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      <div class="code-lang cpp">C++17 · bfs_pathfinding.cpp</div>
+      <div></div>
+    </div>
+    <pre><code><span class="cm">// BFS Pathfinding on a 5x5 grid using a Queue (linked list)
+// 0 = walkable, 1 = wall
+// Finds shortest path from Start to End</span>
+
+<span class="kw">#include</span> <span class="str">&lt;iostream&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;vector&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;queue&gt;</span>   <span class="cm">// STL queue (backed by deque — uses same FIFO logic)</span>
+<span class="kw">#include</span> <span class="str">&lt;utility&gt;</span>
+<span class="kw">using namespace</span> std;
+
+<span class="kw2">const</span> <span class="kw2">int</span> ROWS = <span class="num">5</span>, COLS = <span class="num">5</span>;
+
+<span class="cm">// 4-directional movement: Up, Down, Left, Right</span>
+<span class="kw2">int</span> dr[] = {-<span class="num">1</span>,  <span class="num">1</span>,  <span class="num">0</span>,  <span class="num">0</span>};
+<span class="kw2">int</span> dc[] = { <span class="num">0</span>,  <span class="num">0</span>, -<span class="num">1</span>,  <span class="num">1</span>};
+
+<span class="kw2">bool</span> <span class="fn">bfs</span>(vector&lt;vector&lt;<span class="kw2">int</span>&gt;&gt;&amp; grid,
+         pair&lt;<span class="kw2">int</span>,<span class="kw2">int</span>&gt; start,
+         pair&lt;<span class="kw2">int</span>,<span class="kw2">int</span>&gt; end_pos) {
+
+    vector&lt;vector&lt;<span class="kw2">bool</span>&gt;&gt; visited(ROWS, vector&lt;<span class="kw2">bool</span>&gt;(COLS, <span class="kw2">false</span>));
+    vector&lt;vector&lt;<span class="kw2">int</span>&gt;&gt;  dist   (ROWS, vector&lt;<span class="kw2">int</span>&gt; (COLS, -<span class="num">1</span>));
+
+    <span class="cm">// Queue stores {row, col} pairs — FIFO order guarantees shortest path</span>
+    queue&lt;pair&lt;<span class="kw2">int</span>,<span class="kw2">int</span>&gt;&gt; q;
+
+    q.<span class="fn">push</span>(start);
+    visited[start.first][start.second] = <span class="kw2">true</span>;
+    dist   [start.first][start.second] = <span class="num">0</span>;
+
+    <span class="kw">while</span> (!q.<span class="fn">empty</span>()) {
+        <span class="kw">auto</span> [r, c] = q.<span class="fn">front</span>();  <span class="cm">// DEQUEUE from front</span>
+        q.<span class="fn">pop</span>();
+
+        <span class="kw">if</span> (r == end_pos.first &amp;&amp; c == end_pos.second) {
+            cout &lt;&lt; <span class="str">"Path found! Shortest distance: "</span>
+                 &lt;&lt; dist[r][c] &lt;&lt; <span class="str">" steps\n"</span>;
+            <span class="kw">return</span> <span class="kw2">true</span>;
+        }
+
+        <span class="cm">// Explore all 4 neighbours</span>
+        <span class="kw">for</span> (<span class="kw2">int</span> i = <span class="num">0</span>; i &lt; <span class="num">4</span>; i++) {
+            <span class="kw2">int</span> nr = r + dr[i];
+            <span class="kw2">int</span> nc = c + dc[i];
+
+            <span class="cm">// Check bounds, wall, and not visited</span>
+            <span class="kw">if</span> (nr &gt;= <span class="num">0</span> &amp;&amp; nr &lt; ROWS &amp;&amp; nc &gt;= <span class="num">0</span> &amp;&amp; nc &lt; COLS
+                &amp;&amp; !visited[nr][nc] &amp;&amp; grid[nr][nc] == <span class="num">0</span>) {
+                visited[nr][nc] = <span class="kw2">true</span>;
+                dist[nr][nc]    = dist[r][c] + <span class="num">1</span>;
+                q.<span class="fn">push</span>({nr, nc});  <span class="cm">// ENQUEUE neighbour at rear</span>
+            }
+        }
+    }
+
+    cout &lt;&lt; <span class="str">"No path found — destination is blocked!\n"</span>;
+    <span class="kw">return</span> <span class="kw2">false</span>;
+}
+
+<span class="kw2">int</span> <span class="fn">main</span>() {
+    <span class="cm">// 0 = open, 1 = wall</span>
+    vector&lt;vector&lt;<span class="kw2">int</span>&gt;&gt; dungeon = {
+        {<span class="num">0</span>, <span class="num">0</span>, <span class="num">1</span>, <span class="num">0</span>, <span class="num">0</span>},
+        {<span class="num">1</span>, <span class="num">0</span>, <span class="num">1</span>, <span class="num">1</span>, <span class="num">0</span>},
+        {<span class="num">1</span>, <span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>},
+        {<span class="num">1</span>, <span class="num">1</span>, <span class="num">0</span>, <span class="num">1</span>, <span class="num">1</span>},
+        {<span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>}
+    };
+
+    pair&lt;<span class="kw2">int</span>,<span class="kw2">int</span>&gt; hero    = {<span class="num">0</span>, <span class="num">0</span>};   <span class="cm">// Hero starts top-left</span>
+    pair&lt;<span class="kw2">int</span>,<span class="kw2">int</span>&gt; exit_pt = {<span class="num">4</span>, <span class="num">4</span>};   <span class="cm">// Exit at bottom-right</span>
+
+    cout &lt;&lt; <span class="str">"=== DUNGEON PATHFINDER (BFS) ===\n"</span>;
+    <span class="fn">bfs</span>(dungeon, hero, exit_pt);
+
+    <span class="kw">return</span> <span class="num">0</span>;
+}</code></pre>
+  </div>
+
+  <div class="concept-box tip" data-label="BFS + QUEUE CONNECTION">
+    <p>
+      BFS explores nodes <strong>level by level</strong> — it visits all neighbors at distance 1 before distance 2, distance 2 before distance 3, and so on. This guarantees the <strong>shortest path</strong> in an unweighted grid. The queue is what enforces this order: nodes are visited in exactly the order they were discovered.
+    </p>
+  </div>
+
+  <h3>Example 3 — Input Event Buffer (Python)</h3>
+  <p>
+    Many games buffer player inputs to allow "combos" — pressing keys ahead of time (like in fighting games). A queue holds inputs and processes them in order.
+  </p>
+
+  <div class="code-container">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      <div class="code-lang python">PYTHON 3 · input_buffer.py</div>
+      <div></div>
+    </div>
+    <pre><code><span class="cm"># Input buffer — simulates a fighting game's command queue</span>
+
+<span class="kw">class</span> <span class="cls">Node</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="self">self</span>, event):
+        <span class="self">self</span>.event = event
+        <span class="self">self</span>.next  = <span class="kw2">None</span>
+
+<span class="kw">class</span> <span class="cls">InputBuffer</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="self">self</span>, max_size=<span class="num">10</span>):
+        <span class="self">self</span>.front    = <span class="kw2">None</span>
+        <span class="self">self</span>.rear     = <span class="kw2">None</span>
+        <span class="self">self</span>._size    = <span class="num">0</span>
+        <span class="self">self</span>.max_size = max_size  <span class="cm"># Limit buffer to avoid overflow</span>
+
+    <span class="kw">def</span> <span class="fn">push_input</span>(<span class="self">self</span>, event):
+        <span class="str">"""Register a player input into the buffer."""</span>
+        <span class="kw">if</span> <span class="self">self</span>._size >= <span class="self">self</span>.max_size:
+            <span class="fn">print</span>(<span class="str">f"Buffer full — dropping oldest input to fit '{event}'"</span>)
+            <span class="self">self</span>.<span class="fn">process_input</span>()  <span class="cm"># Drop oldest to make room</span>
+
+        node = <span class="cls">Node</span>(event)
+        <span class="kw">if</span> <span class="kw">not</span> <span class="self">self</span>.rear:
+            <span class="self">self</span>.front = <span class="self">self</span>.rear = node
+        <span class="kw">else</span>:
+            <span class="self">self</span>.rear.next = node
+            <span class="self">self</span>.rear = node
+        <span class="self">self</span>._size += <span class="num">1</span>
+        <span class="fn">print</span>(<span class="str">f"  [BUFFERED] '{event}'"</span>)
+
+    <span class="kw">def</span> <span class="fn">process_input</span>(<span class="self">self</span>):
+        <span class="str">"""Process and remove the oldest input from the buffer."""</span>
+        <span class="kw">if</span> <span class="kw">not</span> <span class="self">self</span>.front:
+            <span class="fn">print</span>(<span class="str">"  No inputs to process."</span>)
+            <span class="kw">return</span> <span class="kw2">None</span>
+        event = <span class="self">self</span>.front.event
+        <span class="self">self</span>.front = <span class="self">self</span>.front.next
+        <span class="kw">if</span> <span class="kw">not</span> <span class="self">self</span>.front:
+            <span class="self">self</span>.rear = <span class="kw2">None</span>
+        <span class="self">self</span>._size -= <span class="num">1</span>
+        <span class="fn">print</span>(<span class="str">f"  [EXECUTED] '{event}'"</span>)
+        <span class="kw">return</span> event
+
+    <span class="kw">def</span> <span class="fn">process_all</span>(<span class="self">self</span>):
+        <span class="str">"""Flush and execute all buffered inputs (called each game frame)."""</span>
+        <span class="fn">print</span>(<span class="str">"\n-- Game tick: processing all buffered inputs --"</span>)
+        <span class="kw">while</span> <span class="self">self</span>.front:
+            <span class="self">self</span>.<span class="fn">process_input</span>()
+
+
+<span class="cm"># ── Simulation ──</span>
+buf = <span class="cls">InputBuffer</span>(max_size=<span class="num">5</span>)
+<span class="fn">print</span>(<span class="str">"=== Player inputs between frames ==="</span>)
+buf.<span class="fn">push_input</span>(<span class="str">"RIGHT"</span>)
+buf.<span class="fn">push_input</span>(<span class="str">"RIGHT"</span>)
+buf.<span class="fn">push_input</span>(<span class="str">"DOWN"</span>)
+buf.<span class="fn">push_input</span>(<span class="str">"PUNCH"</span>)
+buf.<span class="fn">push_input</span>(<span class="str">"KICK"</span>)
+<span class="cm"># This next one overflows the buffer (max 5):</span>
+buf.<span class="fn">push_input</span>(<span class="str">"SUPER_MOVE"</span>)
+
+buf.<span class="fn">process_all</span>()</code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ -->
+<!-- 10 · REAL WORLD APPLICATIONS      -->
+<!-- ══════════════════════════════════ -->
+<section class="section" id="real-world">
+  <h2>11 — REAL WORLD APPLICATIONS OF QUEUE</h2>
+
+  <p>
+    Queues are everywhere in computing and daily life. Here are the most impactful real-world applications where the queue data structure is used:
+  </p>
+
+  <div class="rw-cards">
+
+    <div class="rw-card">
+      <div class="rw-card-num">01</div>
+      <h4>CPU Process Scheduling</h4>
+      <p>Operating systems use queues to manage which processes get CPU time. In Round-Robin scheduling, each process joins a queue and gets a fixed time slice before cycling to the back.</p>
+    </div>
+
+    <div class="rw-card">
+      <div class="rw-card-num">02</div>
+      <h4>Printer Spooling</h4>
+      <p>When multiple users send print jobs to one printer, jobs queue up and are printed in FIFO order. The printer processes one document at a time from the front of the queue.</p>
+    </div>
+
+    <div class="rw-card">
+      <div class="rw-card-num">03</div>
+      <h4>Web Server Request Handling</h4>
+      <p>Web servers (like Nginx, Apache) place incoming HTTP requests in a queue. Worker threads pick up requests from the front and process them, enabling thousands of requests per second.</p>
+    </div>
+
+    <div class="rw-card">
+      <div class="rw-card-num">04</div>
+      <h4>Message Brokers (Kafka, RabbitMQ)</h4>
+      <p>Modern distributed systems use message queues to decouple services. Producer services push messages; consumer services pop and process them asynchronously — enabling microservices architectures.</p>
+    </div>
+
+    <div class="rw-card">
+      <div class="rw-card-num">05</div>
+      <h4>Call Centers / Customer Support</h4>
+      <p>When all agents are busy, callers join a virtual queue. The system tracks the order callers joined and connects them to the next available agent in FIFO order.</p>
+    </div>
+
+    <div class="rw-card">
+      <div class="rw-card-num">06</div>
+      <h4>Keyboard / I/O Buffer</h4>
+      <p>When you type quickly, keystrokes are placed into a buffer queue. The OS reads them in the order you pressed them, ensuring characters appear correctly even under high input speed.</p>
+    </div>
+
+    <div class="rw-card">
+      <div class="rw-card-num">07</div>
+      <h4>Breadth-First Search (Graphs)</h4>
+      <p>BFS is used in social networks (finding degrees of separation), GPS navigation (shortest routes), and web crawlers (visiting pages level by level) — all powered by a queue.</p>
+    </div>
+
+    <div class="rw-card">
+      <div class="rw-card-num">08</div>
+      <h4>Video Streaming Buffers</h4>
+      <p>Platforms like YouTube and Netflix pre-load video chunks into a playback queue. The player dequeues and renders chunks in order — ensuring smooth playback even with network jitter.</p>
+    </div>
+
+    <div class="rw-card">
+      <div class="rw-card-num">09</div>
+      <h4>Hospital Emergency Triage</h4>
+      <p>Patients are added to treatment queues by urgency level (priority queues). Even in a standard FIFO model, triage nurses manage waiting queues to ensure fair and timely care.</p>
+    </div>
+
+    <div class="rw-card">
+      <div class="rw-card-num">10</div>
+      <h4>Asynchronous Task Runners</h4>
+      <p>Background job systems (Celery, Sidekiq, Bull) maintain queues of tasks — sending emails, processing payments, generating reports — executed independently of the main app thread.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ -->
+<!-- 11 · SUMMARY                      -->
+<!-- ══════════════════════════════════ -->
+<section class="section" id="summary">
+  <h2>12 — SUMMARY & CHEAT SHEET</h2>
+
+  <table class="op-table">
+    <thead>
+      <tr>
+        <th>Topic</th>
+        <th>Key Takeaway</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Principle</td><td>FIFO — First In, First Out. Front = exit, Rear = entry.</td></tr>
+      <tr><td>Node</td><td>Holds <strong>data</strong> + <strong>next pointer</strong>. Last node's next = NULL.</td></tr>
+      <tr><td>Enqueue</td><td>Add new node at REAR. O(1) — no traversal needed.</td></tr>
+      <tr><td>Dequeue</td><td>Remove node from FRONT. O(1). Reset rear if queue becomes empty.</td></tr>
+      <tr><td>Peek</td><td>Return FRONT's data without modifying the queue. O(1).</td></tr>
+      <tr><td>Space</td><td>O(n) — one node per element stored in the queue.</td></tr>
+      <tr><td>vs Array Queue</td><td>Linked list has no overflow, true O(1) dequeue (no shifting).</td></tr>
+      <tr><td>Doubly Linked List</td><td>Adds a <strong>prev</strong> pointer to each node — same O(1) speed, but enables backward traversal and is the foundation for Deques.</td></tr>
+      <tr><td>Game Uses</td><td>NPC turns, respawn, BFS pathfinding, input buffering, matchmaking.</td></tr>
+      <tr><td>Real World</td><td>OS scheduling, print spooling, web servers, Kafka, streaming buffers.</td></tr>
+      <tr><td>C++ Memory</td><td>Always <span class="highlight-box">delete</span> dequeued nodes. Consider smart pointers in production.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="concept-box tip" data-label="NEXT LEVEL">
+    <p>
+      After mastering the basic queue, level up with: <strong>Circular Queue</strong> (efficient with arrays), <strong>Deque (Double-Ended Queue)</strong> (insert/delete from both ends), and <strong>Priority Queue</strong> (elements dequeue by priority, not insertion order — powers Dijkstra's shortest path algorithm, a must-know for open-world games with navigation!).
+    </p>
+  </div>
+
+</section>
+
+</main>
+</div>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="footer-logo">[ QUEUE_TUTORIAL.EXE ]</div>
+  <div class="footer-text">
+    Data Structures &amp; Algorithms · Game Dev Edition · Python + C++<br>
+    <span style="color:var(--neon-green);">INSERT COIN TO CONTINUE LEARNING</span>
+  </div>
+</footer>
+
+<script>
+  // Tab switching logic (for future extensibility)
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const group = btn.closest('.tabs');
+      group.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      group.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      group.querySelector('#' + btn.dataset.target)?.classList.add('active');
+    });
+  });
+
+  // Highlight active nav link on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const navLinks  = document.querySelectorAll('aside nav a');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(link => {
+          link.style.color = '';
+          link.style.borderLeftColor = '';
+          link.style.background = '';
+        });
+        const active = document.querySelector(`aside nav a[href="#${entry.target.id}"]`);
+        if (active) {
+          active.style.color = 'var(--neon-cyan)';
+          active.style.borderLeftColor = 'var(--neon-cyan)';
+          active.style.background = 'rgba(0,229,255,0.05)';
+        }
+      }
+    });
+  }, { threshold: 0.3 });
+
+  sections.forEach(s => observer.observe(s));
+
+  // ── COPY BUTTONS ────────────────────────────────────────────────
+  document.querySelectorAll('.code-header').forEach(header => {
+    const placeholder = header.querySelector('div:last-child');
+    if (!placeholder) return;
+
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.textContent = '[ COPY ]';
+
+    btn.addEventListener('click', () => {
+      const container = header.closest('.code-container');
+      const codeEl = container?.querySelector('code');
+      if (!codeEl) return;
+
+      const plainText = codeEl.innerText;
+
+      navigator.clipboard.writeText(plainText).then(() => {
+        btn.textContent = '[ COPIED! ]';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = '[ COPY ]'; btn.classList.remove('copied'); }, 2000);
+      }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = plainText;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = '[ COPIED! ]';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = '[ COPY ]'; btn.classList.remove('copied'); }, 2000);
+      });
+    });
+
+    placeholder.replaceWith(btn);
+  });
+</script>
+</body>
+</html>

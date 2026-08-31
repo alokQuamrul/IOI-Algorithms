@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Queue in Python — The Gamer's Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --neon-green: #39ff14;
+    --neon-cyan: #00f5ff;
+    --neon-pink: #ff007f;
+    --neon-yellow: #ffe600;
+    --neon-purple: #bf00ff;
+    --dark-bg: #0a0a0f;
+    --dark-surface: #10101a;
+    --dark-card: #14141f;
+    --dark-card2: #1a1a2e;
+    --border-glow: rgba(57, 255, 20, 0.3);
+    --text-main: #e0e0f0;
+    --text-muted: #8888aa;
+    --code-bg: #08080f;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--dark-bg);
+    color: var(--text-main);
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 300;
+    line-height: 1.75;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* Grid background */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      linear-gradient(rgba(57,255,20,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(57,255,20,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page-wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* ===== HEADER ===== */
+  .hero {
+    text-align: center;
+    padding: 60px 0 50px;
+    position: relative;
+  }
+
+  .hero-badge {
+    display: inline-block;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--neon-green);
+    border: 1px solid var(--neon-green);
+    padding: 6px 14px;
+    margin-bottom: 28px;
+    letter-spacing: 2px;
+    box-shadow: 0 0 12px rgba(57,255,20,0.3);
+    animation: pulse-green 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-green {
+    0%, 100% { box-shadow: 0 0 8px rgba(57,255,20,0.3); }
+    50% { box-shadow: 0 0 24px rgba(57,255,20,0.6); }
+  }
+
+  .hero h1 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(18px, 3.5vw, 28px);
+    color: var(--neon-cyan);
+    line-height: 1.5;
+    text-shadow: 0 0 20px rgba(0,245,255,0.5), 0 0 40px rgba(0,245,255,0.2);
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+  }
+
+  .hero-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 15px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    margin-bottom: 30px;
+  }
+
+  .hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .stat-chip {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--neon-yellow);
+    border: 1px solid rgba(255,230,0,0.3);
+    padding: 5px 14px;
+    border-radius: 2px;
+  }
+
+  /* ===== TABLE OF CONTENTS ===== */
+  .toc {
+    background: var(--dark-card);
+    border: 1px solid rgba(0,245,255,0.2);
+    border-left: 3px solid var(--neon-cyan);
+    padding: 28px 32px;
+    margin: 40px 0;
+    position: relative;
+  }
+
+  .toc::before {
+    content: 'MISSION SELECT';
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--neon-cyan);
+    position: absolute;
+    top: -10px;
+    left: 20px;
+    background: var(--dark-card);
+    padding: 0 8px;
+    letter-spacing: 2px;
+  }
+
+  .toc ol {
+    list-style: none;
+    counter-reset: mission;
+  }
+
+  .toc li {
+    counter-increment: mission;
+    margin: 10px 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+  }
+
+  .toc li::before {
+    content: '[ ' counter(mission, decimal-leading-zero) ' ]';
+    color: var(--neon-green);
+    margin-right: 12px;
+  }
+
+  .toc a {
+    color: var(--text-main);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .toc a:hover { color: var(--neon-cyan); }
+
+  /* ===== SECTIONS ===== */
+  .section {
+    margin: 56px 0;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(57,255,20,0.15);
+  }
+
+  .section-num {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: var(--neon-green);
+    opacity: 0.6;
+    min-width: 40px;
+  }
+
+  .section h2 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(11px, 2vw, 14px);
+    color: var(--neon-cyan);
+    text-shadow: 0 0 12px rgba(0,245,255,0.3);
+    line-height: 1.6;
+    letter-spacing: 0.5px;
+  }
+
+  .section h3 {
+    font-family: 'Exo 2', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--neon-yellow);
+    margin: 32px 0 14px;
+    letter-spacing: 0.5px;
+  }
+
+  .section p {
+    font-size: 15px;
+    color: var(--text-main);
+    margin-bottom: 16px;
+    line-height: 1.8;
+  }
+
+  /* ===== CODE BLOCKS ===== */
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid rgba(57,255,20,0.2);
+    border-left: 3px solid var(--neon-green);
+    border-radius: 4px;
+    padding: 24px 28px;
+    margin: 20px 0;
+    overflow-x: auto;
+    position: relative;
+  }
+
+  .code-label {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: var(--neon-green);
+    opacity: 0.5;
+    letter-spacing: 1px;
+  }
+
+  .code-block pre {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: #c8f0c8;
+    tab-size: 4;
+    white-space: pre;
+  }
+
+  /* Syntax highlighting */
+  .kw { color: var(--neon-cyan); }
+  .fn { color: var(--neon-yellow); }
+  .st { color: #ffaa55; }
+  .cm { color: #556655; font-style: italic; }
+  .nb { color: #aa88ff; }
+  .nm { color: var(--neon-pink); }
+
+  /* ===== OUTPUT BLOCKS ===== */
+  .output-block {
+    background: #060610;
+    border: 1px solid rgba(255,0,127,0.2);
+    border-left: 3px solid var(--neon-pink);
+    border-radius: 4px;
+    padding: 16px 22px;
+    margin: 12px 0 20px;
+  }
+
+  .output-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: var(--neon-pink);
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+    opacity: 0.7;
+  }
+
+  .output-block pre {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: #ff88cc;
+    line-height: 1.7;
+  }
+
+  /* ===== CALLOUT BOXES ===== */
+  .callout {
+    border-radius: 4px;
+    padding: 20px 24px;
+    margin: 24px 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .callout::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 3px;
+  }
+
+  .callout-info {
+    background: rgba(0,245,255,0.06);
+    border: 1px solid rgba(0,245,255,0.15);
+  }
+  .callout-info::before { background: var(--neon-cyan); }
+
+  .callout-warn {
+    background: rgba(255,230,0,0.06);
+    border: 1px solid rgba(255,230,0,0.15);
+  }
+  .callout-warn::before { background: var(--neon-yellow); }
+
+  .callout-tip {
+    background: rgba(57,255,20,0.05);
+    border: 1px solid rgba(57,255,20,0.15);
+  }
+  .callout-tip::before { background: var(--neon-green); }
+
+  .callout-game {
+    background: rgba(191,0,255,0.06);
+    border: 1px solid rgba(191,0,255,0.2);
+  }
+  .callout-game::before { background: var(--neon-purple); }
+
+  .callout-icon {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+  }
+
+  .callout-info .callout-icon { color: var(--neon-cyan); }
+  .callout-warn .callout-icon { color: var(--neon-yellow); }
+  .callout-tip .callout-icon { color: var(--neon-green); }
+  .callout-game .callout-icon { color: var(--neon-purple); }
+
+  .callout p {
+    font-size: 14px;
+    margin-bottom: 0;
+    color: var(--text-main);
+  }
+
+  /* ===== VISUAL QUEUE ===== */
+  .queue-visual {
+    background: var(--dark-card2);
+    border: 1px solid rgba(0,245,255,0.2);
+    border-radius: 6px;
+    padding: 28px 24px;
+    margin: 24px 0;
+    text-align: center;
+  }
+
+  .queue-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    padding: 0 4px;
+  }
+
+  .queue-label-row span:first-child { color: var(--neon-pink); }
+  .queue-label-row span:last-child { color: var(--neon-green); }
+
+  .queue-row {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 8px 0;
+  }
+
+  .q-cell {
+    width: 68px;
+    height: 56px;
+    border: 1.5px solid rgba(0,245,255,0.4);
+    background: rgba(0,245,255,0.07);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 15px;
+    color: var(--neon-cyan);
+    border-radius: 3px;
+    transition: all 0.3s;
+    position: relative;
+  }
+
+  .q-cell .idx {
+    font-size: 9px;
+    color: var(--text-muted);
+    position: absolute;
+    bottom: 3px;
+  }
+
+  .q-cell.empty {
+    color: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.02);
+  }
+
+  .q-cell.front-cell {
+    border-color: var(--neon-pink);
+    background: rgba(255,0,127,0.1);
+    color: var(--neon-pink);
+    box-shadow: 0 0 12px rgba(255,0,127,0.2);
+  }
+
+  .q-cell.rear-cell {
+    border-color: var(--neon-green);
+    background: rgba(57,255,20,0.08);
+    color: var(--neon-green);
+    box-shadow: 0 0 12px rgba(57,255,20,0.2);
+  }
+
+  .q-arrow {
+    font-size: 20px;
+    color: var(--text-muted);
+    margin: 0 2px;
+  }
+
+  .queue-desc {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 14px;
+    letter-spacing: 1px;
+  }
+
+  /* ===== STEP BLOCKS ===== */
+  .steps {
+    counter-reset: step;
+    list-style: none;
+    margin: 20px 0;
+  }
+
+  .steps li {
+    counter-increment: step;
+    display: flex;
+    gap: 18px;
+    margin-bottom: 18px;
+    align-items: flex-start;
+  }
+
+  .steps li::before {
+    content: counter(step);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: var(--dark-bg);
+    background: var(--neon-green);
+    min-width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  .steps li p {
+    margin: 0;
+    font-size: 14.5px;
+  }
+
+  /* ===== GAME SECTION ===== */
+  .game-use-card {
+    background: var(--dark-card2);
+    border: 1px solid rgba(191,0,255,0.25);
+    border-radius: 6px;
+    padding: 22px 26px;
+    margin: 20px 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .game-use-card::after {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(191,0,255,0.08), transparent 70%);
+    pointer-events: none;
+  }
+
+  .game-use-card h4 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--neon-purple);
+    margin-bottom: 14px;
+    letter-spacing: 1px;
+  }
+
+  .game-use-card p {
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+
+  .game-use-card p:last-child { margin-bottom: 0; }
+
+  /* ===== COMPLEXITY TABLE ===== */
+  .complexity-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+  }
+
+  .complexity-table th {
+    background: rgba(57,255,20,0.1);
+    color: var(--neon-green);
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid rgba(57,255,20,0.3);
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+
+  .complexity-table td {
+    padding: 11px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    color: var(--text-main);
+  }
+
+  .complexity-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .complexity-table .good { color: var(--neon-green); }
+  .complexity-table .bad { color: var(--neon-pink); }
+
+  /* ===== INLINE CODE ===== */
+  code {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    background: rgba(57,255,20,0.08);
+    color: var(--neon-green);
+    padding: 2px 7px;
+    border-radius: 2px;
+    border: 1px solid rgba(57,255,20,0.15);
+  }
+
+  /* ===== DIVIDER ===== */
+  .divider {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    margin: 50px 0;
+    position: relative;
+    text-align: center;
+  }
+
+  .divider::after {
+    content: '▸ ▸ ▸';
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: rgba(57,255,20,0.3);
+    position: absolute;
+    top: -9px;
+    background: var(--dark-bg);
+    padding: 0 12px;
+    letter-spacing: 4px;
+  }
+
+  /* ===== FOOTER ===== */
+  .footer {
+    text-align: center;
+    padding: 40px 0;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    margin-top: 60px;
+  }
+
+  .footer p {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: var(--text-muted);
+    line-height: 2;
+    letter-spacing: 1px;
+  }
+
+  .footer .green { color: var(--neon-green); }
+
+  /* ===== HIGHLIGHT BOX ===== */
+  .highlight-box {
+    display: inline-block;
+    background: rgba(255,230,0,0.08);
+    border: 1px solid rgba(255,230,0,0.2);
+    padding: 3px 10px;
+    border-radius: 2px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: var(--neon-yellow);
+  }
+
+  ul.bullets {
+    margin: 14px 0 18px 8px;
+    list-style: none;
+  }
+
+  ul.bullets li {
+    font-size: 14.5px;
+    margin-bottom: 10px;
+    padding-left: 22px;
+    position: relative;
+    color: var(--text-main);
+  }
+
+  ul.bullets li::before {
+    content: '▸';
+    color: var(--neon-green);
+    position: absolute;
+    left: 0;
+    font-size: 12px;
+  }
+
+  /* ===== QUIZ SECTION ===== */
+  .quiz-card {
+    background: var(--dark-card);
+    border: 1px dashed rgba(255,230,0,0.3);
+    border-radius: 4px;
+    padding: 22px 26px;
+    margin: 20px 0;
+  }
+
+  .quiz-card h4 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--neon-yellow);
+    margin-bottom: 14px;
+    letter-spacing: 1px;
+  }
+
+  .quiz-card ol {
+    margin-left: 18px;
+  }
+
+  .quiz-card ol li {
+    font-size: 14px;
+    margin-bottom: 10px;
+    color: var(--text-main);
+  }
+
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">PYTHON TUTORIAL — LEVEL 04</div>
+    <h1>QUEUE<br>USING ARRAYS</h1>
+    <p class="hero-sub">// THE GAMER'S COMPLETE GUIDE TO QUEUES IN PYTHON</p>
+    <div class="hero-stats">
+      <span class="stat-chip">BEGINNER FRIENDLY</span>
+      <span class="stat-chip">PYTHON 3.x</span>
+      <span class="stat-chip">GAME DEV FOCUS</span>
+    </div>
+  </div>
+
+  <!-- TABLE OF CONTENTS -->
+  <div class="toc">
+    <ol>
+      <li><a href="#s1">What is a Queue? The Real-World Concept</a></li>
+      <li><a href="#s2">How a Queue Works — The Rules</a></li>
+      <li><a href="#s3">Setting Up Our Queue Using an Array (List)</a></li>
+      <li><a href="#s4">Core Operations: Enqueue, Dequeue, Peek & More</a></li>
+      <li><a href="#s5">A Complete Queue Class — Putting It All Together</a></li>
+      <li><a href="#s6">Types of Queues</a></li>
+      <li><a href="#s7">Time & Space Complexity</a></li>
+      <li><a href="#s8">Queues in Game Development — Level Up!</a></li>
+      <li><a href="#s9">Common Mistakes & How to Avoid Them</a></li>
+      <li><a href="#s10">Practice Challenges</a></li>
+    </ol>
+  </div>
+
+  <!-- SECTION 1 -->
+  <div class="section" id="s1">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2>WHAT IS A QUEUE?<br>THE REAL-WORLD CONCEPT</h2>
+    </div>
+
+    <p>Imagine you are at the lunch line in a school cafeteria. The first person who joined the line gets their food first. New people join at the back of the line. Nobody cuts in front. That's a <strong style="color:var(--neon-cyan)">Queue</strong>.</p>
+
+    <p>Or think about it in game terms — in a multiplayer game lobby, the first player who clicked "Find Match" is the first one to be placed into a match. Players who click later wait behind them. The game processes them <em>in order</em>.</p>
+
+    <div class="callout callout-game">
+      <div class="callout-icon">🎮 GAME ANALOGY</div>
+      <p>In a tower defense game, enemies appear one by one from a path entrance. The first enemy to spawn is the first one walking on the path. All enemies line up in a Queue — first in, first to attack your towers!</p>
+    </div>
+
+    <p>In computer science, a Queue is a <strong style="color:var(--neon-yellow)">linear data structure</strong> that follows the <strong style="color:var(--neon-yellow)">FIFO</strong> principle:</p>
+
+    <div style="text-align:center; padding: 20px 0;">
+      <span class="highlight-box">FIFO = First In, First Out</span>
+    </div>
+
+    <p>The element that was added <em>first</em> is always removed <em>first</em>. Think of it like a tube — things go in one end and come out the other end.</p>
+
+    <!-- Visual Queue -->
+    <div class="queue-visual">
+      <div class="queue-label-row">
+        <span>◀ FRONT (exit here)</span>
+        <span>REAR (enter here) ▶</span>
+      </div>
+      <div class="queue-row">
+        <div class="q-cell front-cell">A<span class="idx">[0]</span></div>
+        <div class="q-arrow">→</div>
+        <div class="q-cell">B<span class="idx">[1]</span></div>
+        <div class="q-arrow">→</div>
+        <div class="q-cell">C<span class="idx">[2]</span></div>
+        <div class="q-arrow">→</div>
+        <div class="q-cell rear-cell">D<span class="idx">[3]</span></div>
+      </div>
+      <div class="queue-desc">A was added first → A will leave first | D was added last → D leaves last</div>
+    </div>
+
+    <p>Here, <span style="color:var(--neon-pink)">A</span> is at the <strong>FRONT</strong> — it was the first one added and will be the first to be removed. <span style="color:var(--neon-green)">D</span> is at the <strong>REAR</strong> — it was the last one added.</p>
+
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 2 -->
+  <div class="section" id="s2">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2>HOW A QUEUE WORKS<br>THE RULES</h2>
+    </div>
+
+    <p>A queue has two ends and only two valid points of interaction:</p>
+
+    <ul class="bullets">
+      <li><strong style="color:var(--neon-green)">REAR (Back End)</strong> — This is where new items are <em>added</em>. This operation is called <strong>Enqueue</strong>.</li>
+      <li><strong style="color:var(--neon-pink)">FRONT (Front End)</strong> — This is where items are <em>removed</em>. This operation is called <strong>Dequeue</strong>.</li>
+    </ul>
+
+    <div class="callout callout-warn">
+      <div class="callout-icon">⚠ CRITICAL RULE</div>
+      <p>You can NEVER remove from the rear or add from the front. Violating this makes it no longer a proper Queue. It's like someone cutting into the middle of a game lobby line — against the rules!</p>
+    </div>
+
+    <h3>Visualizing Enqueue and Dequeue</h3>
+    <p>Let's trace through what happens step by step when we add and remove players from a game lobby queue.</p>
+
+    <p><strong style="color:var(--neon-yellow)">Step 1:</strong> Queue starts empty:</p>
+    <div class="queue-visual">
+      <div class="queue-row">
+        <div class="q-cell empty">—<span class="idx">[0]</span></div>
+        <div class="q-cell empty">—<span class="idx">[1]</span></div>
+        <div class="q-cell empty">—<span class="idx">[2]</span></div>
+        <div class="q-cell empty">—<span class="idx">[3]</span></div>
+      </div>
+      <div class="queue-desc">Empty queue. No players yet.</div>
+    </div>
+
+    <p><strong style="color:var(--neon-yellow)">Step 2:</strong> Enqueue "Player1", "Player2", "Player3":</p>
+    <div class="queue-visual">
+      <div class="queue-label-row">
+        <span>◀ FRONT</span>
+        <span>REAR ▶</span>
+      </div>
+      <div class="queue-row">
+        <div class="q-cell front-cell">P1<span class="idx">[0]</span></div>
+        <div class="q-arrow">→</div>
+        <div class="q-cell">P2<span class="idx">[1]</span></div>
+        <div class="q-arrow">→</div>
+        <div class="q-cell rear-cell">P3<span class="idx">[2]</span></div>
+        <div class="q-cell empty">—<span class="idx">[3]</span></div>
+      </div>
+      <div class="queue-desc">Three players in line. Player1 will be matched first.</div>
+    </div>
+
+    <p><strong style="color:var(--neon-yellow)">Step 3:</strong> Dequeue — Player1 gets matched and leaves the front:</p>
+    <div class="queue-visual">
+      <div class="queue-label-row">
+        <span>◀ FRONT</span>
+        <span>REAR ▶</span>
+      </div>
+      <div class="queue-row">
+        <div class="q-cell front-cell">P2<span class="idx">[0]</span></div>
+        <div class="q-arrow">→</div>
+        <div class="q-cell rear-cell">P3<span class="idx">[1]</span></div>
+        <div class="q-cell empty">—<span class="idx">[2]</span></div>
+        <div class="q-cell empty">—<span class="idx">[3]</span></div>
+      </div>
+      <div class="queue-desc">Player1 was matched! Player2 is now at the front.</div>
+    </div>
+
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 3 -->
+  <div class="section" id="s3">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h2>SETTING UP OUR QUEUE<br>USING AN ARRAY (LIST)</h2>
+    </div>
+
+    <p>In Python, we don't have a built-in "array" type by default, but we use <strong style="color:var(--neon-cyan)">lists</strong> instead. Python lists are dynamic arrays — they grow and shrink as needed, which makes them perfect for building a queue.</p>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">ℹ INFO</div>
+      <p>A Python <code>list</code> is basically an array. It stores items in order, with each item at a numbered index starting from 0. Think of it like a row of lockers in a game level — locker 0, locker 1, locker 2...</p>
+    </div>
+
+    <h3>The Simplest Queue in Python</h3>
+    <p>The most beginner-friendly approach is to use a Python list directly. Let's start here before we build a proper class:</p>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON</div>
+      <pre><span class="cm"># Creating an empty queue using a Python list</span>
+queue = []
+
+<span class="cm"># Enqueue (add to the rear) - we use append()</span>
+queue.append(<span class="st">"Player1"</span>)
+queue.append(<span class="st">"Player2"</span>)
+queue.append(<span class="st">"Player3"</span>)
+
+<span class="kw">print</span>(queue)   <span class="cm"># ['Player1', 'Player2', 'Player3']</span>
+
+<span class="cm"># Dequeue (remove from the front) - we use pop(0)</span>
+first_player = queue.pop(<span class="nm">0</span>)
+
+<span class="kw">print</span>(first_player)  <span class="cm"># Player1</span>
+<span class="kw">print</span>(queue)         <span class="cm"># ['Player2', 'Player3']</span></pre>
+    </div>
+
+    <p>Let's break this down line by line so everything makes sense:</p>
+
+    <ul class="bullets">
+      <li><code>queue = []</code> — Creates an empty list. This is our queue. It has nothing in it yet.</li>
+      <li><code>queue.append("Player1")</code> — The <code>append()</code> method adds an item to the <em>end</em> (rear) of the list. This is our <strong>Enqueue</strong> operation.</li>
+      <li><code>queue.pop(0)</code> — The <code>pop(0)</code> method removes and returns the item at index 0 (the <em>front</em> of our list). This is our <strong>Dequeue</strong> operation.</li>
+    </ul>
+
+    <div class="callout callout-warn">
+      <div class="callout-icon">⚠ PERFORMANCE NOTE</div>
+      <p>Using <code>pop(0)</code> is simple but slow for very large queues because Python has to shift every remaining element one step forward. For now it's fine to learn with, but in Section 5 we'll improve this!</p>
+    </div>
+
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 4 -->
+  <div class="section" id="s4">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h2>CORE OPERATIONS:<br>ENQUEUE, DEQUEUE, PEEK &amp; MORE</h2>
+    </div>
+
+    <p>A proper Queue supports several operations. Let's learn each one with code examples:</p>
+
+    <h3>1. Enqueue — Adding to the Queue</h3>
+    <p>Enqueue means adding a new item to the <strong>rear</strong> (back) of the queue. In Python with a list, we use <code>append()</code>.</p>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON</div>
+      <pre>queue = []
+
+<span class="cm"># Enqueue operation</span>
+<span class="kw">def</span> <span class="fn">enqueue</span>(queue, item):
+    queue.append(item)   <span class="cm"># Add to the rear</span>
+    <span class="kw">print</span>(<span class="st">f"Added: {item} | Queue: {queue}"</span>)
+
+enqueue(queue, <span class="st">"Sword"</span>)
+enqueue(queue, <span class="st">"Shield"</span>)
+enqueue(queue, <span class="st">"Potion"</span>)</pre>
+    </div>
+
+    <div class="output-block">
+      <div class="output-label">OUTPUT</div>
+      <pre>Added: Sword   | Queue: ['Sword']
+Added: Shield  | Queue: ['Sword', 'Shield']
+Added: Potion  | Queue: ['Sword', 'Shield', 'Potion']</pre>
+    </div>
+
+    <h3>2. Dequeue — Removing from the Queue</h3>
+    <p>Dequeue means removing and returning the item at the <strong>front</strong> of the queue. We must first check if the queue is empty — you can't remove from an empty queue!</p>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON</div>
+      <pre><span class="kw">def</span> <span class="fn">dequeue</span>(queue):
+    <span class="kw">if</span> <span class="nb">len</span>(queue) == <span class="nm">0</span>:     <span class="cm"># Check if queue is empty</span>
+        <span class="kw">print</span>(<span class="st">"Queue is empty! Nothing to remove."</span>)
+        <span class="kw">return</span> <span class="kw">None</span>
+    
+    item = queue.pop(<span class="nm">0</span>)   <span class="cm"># Remove from the FRONT (index 0)</span>
+    <span class="kw">print</span>(<span class="st">f"Removed: {item} | Queue: {queue}"</span>)
+    <span class="kw">return</span> item
+
+<span class="cm"># Using our queue from before: ['Sword', 'Shield', 'Potion']</span>
+dequeue(queue)   <span class="cm"># Removes 'Sword' (first in, first out)</span>
+dequeue(queue)   <span class="cm"># Removes 'Shield'</span></pre>
+    </div>
+
+    <div class="output-block">
+      <div class="output-label">OUTPUT</div>
+      <pre>Removed: Sword  | Queue: ['Shield', 'Potion']
+Removed: Shield | Queue: ['Potion']</pre>
+    </div>
+
+    <h3>3. Peek (or Front) — Look Without Removing</h3>
+    <p>Sometimes you want to see what's at the front of the queue <em>without</em> actually removing it. This is called <strong>Peek</strong>. Like looking at the first card in your hand without playing it.</p>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON</div>
+      <pre><span class="kw">def</span> <span class="fn">peek</span>(queue):
+    <span class="kw">if</span> <span class="nb">len</span>(queue) == <span class="nm">0</span>:
+        <span class="kw">print</span>(<span class="st">"Queue is empty!"</span>)
+        <span class="kw">return</span> <span class="kw">None</span>
+    
+    <span class="kw">return</span> queue[<span class="nm">0</span>]   <span class="cm"># Just READ index 0, do NOT remove it</span>
+
+queue = [<span class="st">"Boss"</span>, <span class="st">"Minion"</span>, <span class="st">"Dragon"</span>]
+front_enemy = peek(queue)
+
+<span class="kw">print</span>(<span class="st">f"Next enemy: {front_enemy}"</span>)
+<span class="kw">print</span>(<span class="st">f"Queue unchanged: {queue}"</span>)</pre>
+    </div>
+
+    <div class="output-block">
+      <div class="output-label">OUTPUT</div>
+      <pre>Next enemy: Boss
+Queue unchanged: ['Boss', 'Minion', 'Dragon']</pre>
+    </div>
+
+    <h3>4. is_empty — Check if Queue Has Items</h3>
+    <p>Before dequeuing, we need to know if the queue is empty. This prevents errors in our program (and crashes in our game!).</p>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON</div>
+      <pre><span class="kw">def</span> <span class="fn">is_empty</span>(queue):
+    <span class="kw">return</span> <span class="nb">len</span>(queue) == <span class="nm">0</span>   <span class="cm"># Returns True if empty, False otherwise</span>
+
+empty_q = []
+full_q = [<span class="st">"Item1"</span>, <span class="st">"Item2"</span>]
+
+<span class="kw">print</span>(is_empty(empty_q))   <span class="cm"># True</span>
+<span class="kw">print</span>(is_empty(full_q))    <span class="cm"># False</span></pre>
+    </div>
+
+    <div class="output-block">
+      <div class="output-label">OUTPUT</div>
+      <pre>True
+False</pre>
+    </div>
+
+    <h3>5. size — How Many Items Are in the Queue?</h3>
+    <div class="code-block">
+      <div class="code-label">PYTHON</div>
+      <pre><span class="kw">def</span> <span class="fn">size</span>(queue):
+    <span class="kw">return</span> <span class="nb">len</span>(queue)   <span class="cm"># len() gives us the number of items</span>
+
+queue = [<span class="st">"Level1"</span>, <span class="st">"Level2"</span>, <span class="st">"Level3"</span>]
+<span class="kw">print</span>(<span class="st">f"Levels in queue: {size(queue)}"</span>)   <span class="cm"># 3</span></pre>
+    </div>
+
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 5 -->
+  <div class="section" id="s5">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h2>A COMPLETE QUEUE CLASS<br>PUTTING IT ALL TOGETHER</h2>
+    </div>
+
+    <p>Instead of passing a list into separate functions every time, the professional way to handle a queue in Python is to wrap everything into a <strong style="color:var(--neon-cyan)">class</strong>. A class bundles the data (the list) and the operations (enqueue, dequeue, etc.) into one neat package — like a game object that knows how to manage itself.</p>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">ℹ WHAT IS A CLASS?</div>
+      <p>Think of a class as a blueprint. Just like a "Character" blueprint in a game defines what every character can do (move, attack, defend), a <code>Queue</code> class defines what every queue can do (enqueue, dequeue, peek...). You create an <em>instance</em> (an actual queue object) from that blueprint.</p>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON — COMPLETE QUEUE CLASS</div>
+      <pre><span class="kw">class</span> <span class="fn">Queue</span>:
+    <span class="cm">"""
+    A Queue data structure implemented using a Python list.
+    Follows FIFO: First In, First Out.
+    """</span>
+    
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>):
+        <span class="cm"># This runs when we create a new Queue object</span>
+        <span class="kw">self</span>.items = []   <span class="cm"># Our internal list (the actual storage)</span>
+    
+    <span class="kw">def</span> <span class="fn">enqueue</span>(<span class="kw">self</span>, item):
+        <span class="cm"># Add item to the REAR of the queue</span>
+        <span class="kw">self</span>.items.append(item)
+    
+    <span class="kw">def</span> <span class="fn">dequeue</span>(<span class="kw">self</span>):
+        <span class="cm"># Remove and return item from the FRONT of the queue</span>
+        <span class="kw">if</span> <span class="kw">self</span>.is_empty():
+            <span class="kw">raise</span> IndexError(<span class="st">"Dequeue from empty queue!"</span>)
+        <span class="kw">return</span> <span class="kw">self</span>.items.pop(<span class="nm">0</span>)
+    
+    <span class="kw">def</span> <span class="fn">peek</span>(<span class="kw">self</span>):
+        <span class="cm"># Look at the FRONT item without removing it</span>
+        <span class="kw">if</span> <span class="kw">self</span>.is_empty():
+            <span class="kw">raise</span> IndexError(<span class="st">"Peek at empty queue!"</span>)
+        <span class="kw">return</span> <span class="kw">self</span>.items[<span class="nm">0</span>]
+    
+    <span class="kw">def</span> <span class="fn">is_empty</span>(<span class="kw">self</span>):
+        <span class="cm"># Returns True if the queue has no items</span>
+        <span class="kw">return</span> <span class="nb">len</span>(<span class="kw">self</span>.items) == <span class="nm">0</span>
+    
+    <span class="kw">def</span> <span class="fn">size</span>(<span class="kw">self</span>):
+        <span class="cm"># Returns how many items are in the queue</span>
+        <span class="kw">return</span> <span class="nb">len</span>(<span class="kw">self</span>.items)
+    
+    <span class="kw">def</span> <span class="fn">display</span>(<span class="kw">self</span>):
+        <span class="cm"># Print the queue nicely</span>
+        <span class="kw">if</span> <span class="kw">self</span>.is_empty():
+            <span class="kw">print</span>(<span class="st">"[ EMPTY QUEUE ]"</span>)
+        <span class="kw">else</span>:
+            <span class="kw">print</span>(<span class="st">f"FRONT → {self.items} ← REAR"</span>)
+    
+    <span class="kw">def</span> <span class="fn">__str__</span>(<span class="kw">self</span>):
+        <span class="cm"># Called when you print() the queue object directly</span>
+        <span class="kw">return</span> <span class="st">f"Queue({self.items})"</span></pre>
+    </div>
+
+    <h3>Using Our Queue Class</h3>
+    <p>Now let's put the <code>Queue</code> class to use with a real game scenario — managing a sequence of enemies spawning into a level:</p>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON — GAME EXAMPLE</div>
+      <pre><span class="cm"># ---- ENEMY SPAWN QUEUE SIMULATION ----</span>
+
+enemy_spawn_queue = Queue()
+
+<span class="cm"># Adding enemies to the spawn queue</span>
+<span class="kw">print</span>(<span class="st">"=== Queuing up enemies ==="</span>)
+enemy_spawn_queue.enqueue(<span class="st">"Goblin"</span>)
+enemy_spawn_queue.enqueue(<span class="st">"Orc"</span>)
+enemy_spawn_queue.enqueue(<span class="st">"Troll"</span>)
+enemy_spawn_queue.enqueue(<span class="st">"Dragon Boss"</span>)
+enemy_spawn_queue.display()
+
+<span class="kw">print</span>(<span class="st">f"\nTotal enemies queued: {enemy_spawn_queue.size()}"</span>)
+<span class="kw">print</span>(<span class="st">f"Next to spawn: {enemy_spawn_queue.peek()}"</span>)
+
+<span class="cm"># Simulating spawning each enemy one by one</span>
+<span class="kw">print</span>(<span class="st">"\n=== Spawning enemies ==="</span>)
+<span class="kw">while not</span> enemy_spawn_queue.is_empty():
+    enemy = enemy_spawn_queue.dequeue()
+    <span class="kw">print</span>(<span class="st">f"SPAWNED: {enemy}!"</span>)
+    enemy_spawn_queue.display()
+
+<span class="kw">print</span>(<span class="st">"\n=== All enemies have spawned! ==="</span>)</pre>
+    </div>
+
+    <div class="output-block">
+      <div class="output-label">OUTPUT</div>
+      <pre>===  Queuing up enemies ===
+FRONT → ['Goblin', 'Orc', 'Troll', 'Dragon Boss'] ← REAR
+
+Total enemies queued: 4
+Next to spawn: Goblin
+
+=== Spawning enemies ===
+SPAWNED: Goblin!
+FRONT → ['Orc', 'Troll', 'Dragon Boss'] ← REAR
+SPAWNED: Orc!
+FRONT → ['Troll', 'Dragon Boss'] ← REAR
+SPAWNED: Troll!
+FRONT → ['Dragon Boss'] ← REAR
+SPAWNED: Dragon Boss!
+[ EMPTY QUEUE ]
+
+=== All enemies have spawned! ===</pre>
+    </div>
+
+    <div class="callout callout-tip">
+      <div class="callout-icon">✔ TIP</div>
+      <p>Notice the <code>while not enemy_spawn_queue.is_empty()</code> loop — this is the classic pattern for processing a queue! Keep going until there's nothing left. You'll see this in real game engines too.</p>
+    </div>
+
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 6 -->
+  <div class="section" id="s6">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <h2>TYPES OF QUEUES</h2>
+    </div>
+
+    <p>Now that you've mastered the basic queue, let's look at the different flavors that exist. Think of these as different game modes of the same game!</p>
+
+    <h3>1. Simple Queue (Linear Queue)</h3>
+    <p>This is what we've been building. Items go in at the rear and leave from the front. Simple and straightforward — like your tutorial zone.</p>
+
+    <h3>2. Circular Queue</h3>
+    <p>In a linear queue using an array, when items are dequeued from the front, that space goes to waste. A <strong style="color:var(--neon-cyan)">Circular Queue</strong> reuses those empty front spaces by wrapping around — like a circular track in a racing game.</p>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON — CIRCULAR QUEUE (SIMPLIFIED)</div>
+      <pre><span class="kw">class</span> <span class="fn">CircularQueue</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>, capacity):
+        <span class="kw">self</span>.capacity = capacity
+        <span class="kw">self</span>.items = [<span class="kw">None</span>] * capacity   <span class="cm"># Fixed-size array</span>
+        <span class="kw">self</span>.front = <span class="nm">-1</span>
+        <span class="kw">self</span>.rear = <span class="nm">-1</span>
+        <span class="kw">self</span>.count = <span class="nm">0</span>
+    
+    <span class="kw">def</span> <span class="fn">is_full</span>(<span class="kw">self</span>):
+        <span class="kw">return</span> <span class="kw">self</span>.count == <span class="kw">self</span>.capacity
+    
+    <span class="kw">def</span> <span class="fn">is_empty</span>(<span class="kw">self</span>):
+        <span class="kw">return</span> <span class="kw">self</span>.count == <span class="nm">0</span>
+    
+    <span class="kw">def</span> <span class="fn">enqueue</span>(<span class="kw">self</span>, item):
+        <span class="kw">if</span> <span class="kw">self</span>.is_full():
+            <span class="kw">print</span>(<span class="st">"Queue is full!"</span>)
+            <span class="kw">return</span>
+        <span class="cm"># Wrap around using modulo (%) operator</span>
+        <span class="kw">self</span>.rear = (<span class="kw">self</span>.rear + <span class="nm">1</span>) % <span class="kw">self</span>.capacity
+        <span class="kw">self</span>.items[<span class="kw">self</span>.rear] = item
+        <span class="kw">if</span> <span class="kw">self</span>.front == <span class="nm">-1</span>:   <span class="cm"># First item</span>
+            <span class="kw">self</span>.front = <span class="nm">0</span>
+        <span class="kw">self</span>.count += <span class="nm">1</span>
+    
+    <span class="kw">def</span> <span class="fn">dequeue</span>(<span class="kw">self</span>):
+        <span class="kw">if</span> <span class="kw">self</span>.is_empty():
+            <span class="kw">print</span>(<span class="st">"Queue is empty!"</span>)
+            <span class="kw">return</span> <span class="kw">None</span>
+        item = <span class="kw">self</span>.items[<span class="kw">self</span>.front]
+        <span class="kw">self</span>.items[<span class="kw">self</span>.front] = <span class="kw">None</span>
+        <span class="kw">self</span>.front = (<span class="kw">self</span>.front + <span class="nm">1</span>) % <span class="kw">self</span>.capacity
+        <span class="kw">self</span>.count -= <span class="nm">1</span>
+        <span class="kw">return</span> item
+
+<span class="cm"># Example usage</span>
+cq = CircularQueue(<span class="nm">4</span>)
+cq.enqueue(<span class="st">"Bullet1"</span>)
+cq.enqueue(<span class="st">"Bullet2"</span>)
+cq.enqueue(<span class="st">"Bullet3"</span>)
+<span class="kw">print</span>(cq.dequeue())   <span class="cm"># Bullet1</span>
+cq.enqueue(<span class="st">"Bullet4"</span>)   <span class="cm"># Reuses the freed slot!</span>
+<span class="kw">print</span>(cq.items)         <span class="cm"># [None, 'Bullet2', 'Bullet3', 'Bullet4'] or similar</span></pre>
+    </div>
+
+    <h3>3. Priority Queue</h3>
+    <p>In a normal queue, everyone waits in the order they arrived. In a <strong style="color:var(--neon-cyan)">Priority Queue</strong>, items with higher priority are processed first — regardless of when they arrived. In a game, think of a "stun" effect interrupting the normal attack queue!</p>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON — PRIORITY QUEUE CONCEPT</div>
+      <pre><span class="cm"># Python has a built-in heap queue (priority queue)</span>
+<span class="kw">import</span> heapq
+
+priority_queue = []
+
+<span class="cm"># Format: (priority_number, item)
+# LOWER number = HIGHER priority (1 = most urgent)</span>
+heapq.heappush(priority_queue, (<span class="nm">3</span>, <span class="st">"Normal Attack"</span>))
+heapq.heappush(priority_queue, (<span class="nm">1</span>, <span class="st">"Critical Heal"</span>))    <span class="cm"># Most urgent!</span>
+heapq.heappush(priority_queue, (<span class="nm">2</span>, <span class="st">"Shield Buff"</span>))
+
+<span class="cm"># Items come out in priority order, not insertion order</span>
+<span class="kw">while</span> priority_queue:
+    priority, action = heapq.heappop(priority_queue)
+    <span class="kw">print</span>(<span class="st">f"Priority {priority}: Executing '{action}'"</span>)</pre>
+    </div>
+
+    <div class="output-block">
+      <div class="output-label">OUTPUT</div>
+      <pre>Priority 1: Executing 'Critical Heal'
+Priority 2: Executing 'Shield Buff'
+Priority 3: Executing 'Normal Attack'</pre>
+    </div>
+
+    <h3>4. Deque (Double-Ended Queue)</h3>
+    <p>A <strong style="color:var(--neon-cyan)">Deque</strong> (pronounced "deck") lets you add and remove from <em>both</em> ends. Python's <code>collections.deque</code> is perfect for this and is also much faster than using <code>pop(0)</code> on a list.</p>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON — DEQUE</div>
+      <pre><span class="kw">from</span> collections <span class="kw">import</span> deque
+
+<span class="cm"># Better performance Queue using deque</span>
+fast_queue = deque()
+
+fast_queue.append(<span class="st">"Action1"</span>)         <span class="cm"># Add to rear</span>
+fast_queue.append(<span class="st">"Action2"</span>)
+fast_queue.appendleft(<span class="st">"UrgentAct"</span>)   <span class="cm"># Add to FRONT (deque feature)</span>
+
+<span class="kw">print</span>(fast_queue)
+<span class="cm"># deque(['UrgentAct', 'Action1', 'Action2'])</span>
+
+fast_queue.popleft()   <span class="cm"># Remove from front — this is O(1), very fast!</span>
+<span class="kw">print</span>(fast_queue)
+<span class="cm"># deque(['Action1', 'Action2'])</span></pre>
+    </div>
+
+    <div class="callout callout-tip">
+      <div class="callout-icon">✔ PRO TIP</div>
+      <p>For real Python projects (and games!), use <code>collections.deque</code> instead of a plain list for your queue. <code>popleft()</code> is O(1) — extremely fast — compared to <code>pop(0)</code> on a list which is O(n) and slows down as the queue grows.</p>
+    </div>
+
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 7 -->
+  <div class="section" id="s7">
+    <div class="section-header">
+      <span class="section-num">07</span>
+      <h2>TIME &amp; SPACE COMPLEXITY</h2>
+    </div>
+
+    <p>As a game developer, you care about performance. Slow code means lag. Lag makes players quit. Let's understand how fast our queue operations are.</p>
+
+    <p>We use <strong style="color:var(--neon-yellow)">Big O notation</strong> to describe speed. Think of O(1) as "instant" — no matter how big the queue is, it takes the same time. O(n) means "it gets slower as the queue grows."</p>
+
+    <table class="complexity-table">
+      <thead>
+        <tr>
+          <th>OPERATION</th>
+          <th>LIST (pop(0))</th>
+          <th>DEQUE (popleft)</th>
+          <th>NOTE</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Enqueue (add)</td>
+          <td class="good">O(1)</td>
+          <td class="good">O(1)</td>
+          <td>Both are fast</td>
+        </tr>
+        <tr>
+          <td>Dequeue (remove)</td>
+          <td class="bad">O(n)</td>
+          <td class="good">O(1)</td>
+          <td>Deque wins big here!</td>
+        </tr>
+        <tr>
+          <td>Peek (look)</td>
+          <td class="good">O(1)</td>
+          <td class="good">O(1)</td>
+          <td>Both instant</td>
+        </tr>
+        <tr>
+          <td>is_empty</td>
+          <td class="good">O(1)</td>
+          <td class="good">O(1)</td>
+          <td>Both instant</td>
+        </tr>
+        <tr>
+          <td>size</td>
+          <td class="good">O(1)</td>
+          <td class="good">O(1)</td>
+          <td>Both instant</td>
+        </tr>
+        <tr>
+          <td>Space used</td>
+          <td colspan="2" style="text-align:center; color: var(--neon-yellow)">O(n) — proportional to number of items</td>
+          <td>More items = more memory</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">ℹ WHY IS pop(0) SLOW?</div>
+      <p>When you remove index 0 from a Python list, Python has to shift every remaining element one position to the left to fill the gap. If you have 10,000 enemies in a queue, that's 10,000 shift operations just to remove one! A <code>deque</code> avoids this by using a smarter internal structure.</p>
+    </div>
+
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 8 — GAME SECTION -->
+  <div class="section" id="s8">
+    <div class="section-header">
+      <span class="section-num">08</span>
+      <h2>QUEUES IN GAME DEVELOPMENT<br>LEVEL UP!</h2>
+    </div>
+
+    <p>This is the part you came here for. Let's explore all the places queues power real game mechanics — and write code for each one!</p>
+
+    <!-- Game Use 1 -->
+    <div class="game-use-card">
+      <h4>🗡 USE CASE 1: ENEMY WAVE SPAWNER</h4>
+      <p>Tower defense, dungeon crawlers, and wave-based shooters need enemies to appear in a specific order. A queue is the perfect tool — fill it with enemy types before the wave starts, then dequeue one enemy at a time to spawn them.</p>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON — ENEMY WAVE SPAWNER</div>
+      <pre><span class="kw">from</span> collections <span class="kw">import</span> deque
+
+<span class="kw">class</span> <span class="fn">WaveSpawner</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>):
+        <span class="kw">self</span>.wave_queue = deque()
+        <span class="kw">self</span>.wave_number = <span class="nm">0</span>
+    
+    <span class="kw">def</span> <span class="fn">load_wave</span>(<span class="kw">self</span>, enemies):
+        <span class="kw">self</span>.wave_number += <span class="nm">1</span>
+        <span class="kw">for</span> enemy <span class="kw">in</span> enemies:
+            <span class="kw">self</span>.wave_queue.append(enemy)
+        <span class="kw">print</span>(<span class="st">f"Wave {self.wave_number} loaded: {enemies}"</span>)
+    
+    <span class="kw">def</span> <span class="fn">spawn_next</span>(<span class="kw">self</span>):
+        <span class="kw">if</span> <span class="kw">not</span> <span class="kw">self</span>.wave_queue:
+            <span class="kw">print</span>(<span class="st">"All enemies spawned! Wave complete."</span>)
+            <span class="kw">return</span> <span class="kw">None</span>
+        enemy = <span class="kw">self</span>.wave_queue.popleft()
+        <span class="kw">print</span>(<span class="st">f"  >> SPAWNING: {enemy}"</span>)
+        <span class="kw">return</span> enemy
+
+<span class="cm"># Game simulation</span>
+spawner = WaveSpawner()
+spawner.load_wave([<span class="st">"Goblin"</span>, <span class="st">"Goblin"</span>, <span class="st">"Orc"</span>, <span class="st">"Troll"</span>, <span class="st">"BOSS"</span>])
+
+<span class="kw">print</span>(<span class="st">"\n--- Wave begins! ---"</span>)
+<span class="kw">for</span> _ <span class="kw">in</span> <span class="nb">range</span>(<span class="nm">6</span>):   <span class="cm"># Try to spawn 6 (only 5 exist)</span>
+    spawner.spawn_next()</pre>
+    </div>
+
+    <div class="output-block">
+      <div class="output-label">OUTPUT</div>
+      <pre>Wave 1 loaded: ['Goblin', 'Goblin', 'Orc', 'Troll', 'BOSS']
+
+--- Wave begins! ---
+  >> SPAWNING: Goblin
+  >> SPAWNING: Goblin
+  >> SPAWNING: Orc
+  >> SPAWNING: Troll
+  >> SPAWNING: BOSS
+All enemies spawned! Wave complete.</pre>
+    </div>
+
+    <!-- Game Use 2 -->
+    <div class="game-use-card">
+      <h4>🎮 USE CASE 2: PLAYER ACTION QUEUE (TURN-BASED GAMES)</h4>
+      <p>In turn-based strategy games like chess or RPGs, players queue up their actions. The game processes them one by one in the order they were entered. This is exactly a queue in action.</p>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON — TURN-BASED ACTION QUEUE</div>
+      <pre><span class="kw">from</span> collections <span class="kw">import</span> deque
+
+<span class="kw">class</span> <span class="fn">TurnBasedGame</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>):
+        <span class="kw">self</span>.action_queue = deque()
+        <span class="kw">self</span>.turn = <span class="nm">1</span>
+    
+    <span class="kw">def</span> <span class="fn">queue_action</span>(<span class="kw">self</span>, player, action):
+        <span class="kw">self</span>.action_queue.append({<span class="st">'player'</span>: player, <span class="st">'action'</span>: action})
+        <span class="kw">print</span>(<span class="st">f"[{player}] queued action: {action}"</span>)
+    
+    <span class="kw">def</span> <span class="fn">process_turn</span>(<span class="kw">self</span>):
+        <span class="kw">print</span>(<span class="st">f"\n=== Processing Turn {self.turn} ==="</span>)
+        <span class="kw">while</span> <span class="kw">self</span>.action_queue:
+            action_data = <span class="kw">self</span>.action_queue.popleft()
+            <span class="kw">print</span>(<span class="st">f"  ➤ {action_data['player']} executes: {action_data['action']}"</span>)
+        <span class="kw">self</span>.turn += <span class="nm">1</span>
+
+game = TurnBasedGame()
+game.queue_action(<span class="st">"Hero"</span>, <span class="st">"Attack Goblin"</span>)
+game.queue_action(<span class="st">"Mage"</span>, <span class="st">"Cast Fireball"</span>)
+game.queue_action(<span class="st">"Healer"</span>, <span class="st">"Heal Hero"</span>)
+game.process_turn()</pre>
+    </div>
+
+    <div class="output-block">
+      <div class="output-label">OUTPUT</div>
+      <pre>[Hero] queued action: Attack Goblin
+[Mage] queued action: Cast Fireball
+[Healer] queued action: Heal Hero
+
+=== Processing Turn 1 ===
+  ➤ Hero executes: Attack Goblin
+  ➤ Mage executes: Cast Fireball
+  ➤ Healer executes: Heal Hero</pre>
+    </div>
+
+    <!-- Game Use 3 -->
+    <div class="game-use-card">
+      <h4>🔫 USE CASE 3: BULLET / PROJECTILE POOL</h4>
+      <p>Games that need many bullets on screen at once pre-create them in a queue (an "object pool"). When a bullet is needed, dequeue one. When it's done, enqueue it back. This is much faster than creating/destroying objects constantly — a key optimization trick!</p>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON — BULLET OBJECT POOL</div>
+      <pre><span class="kw">from</span> collections <span class="kw">import</span> deque
+
+<span class="kw">class</span> <span class="fn">BulletPool</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>, pool_size):
+        <span class="cm"># Pre-create all bullet objects at game start</span>
+        <span class="kw">self</span>.pool = deque([{<span class="st">'id'</span>: i, <span class="st">'active'</span>: <span class="kw">False</span>}
+                           <span class="kw">for</span> i <span class="kw">in</span> <span class="nb">range</span>(pool_size)])
+        <span class="kw">print</span>(<span class="st">f"Bullet pool created with {pool_size} bullets."</span>)
+    
+    <span class="kw">def</span> <span class="fn">fire</span>(<span class="kw">self</span>, x, y, direction):
+        <span class="kw">if not</span> <span class="kw">self</span>.pool:
+            <span class="kw">print</span>(<span class="st">"No bullets available! Reload first."</span>)
+            <span class="kw">return</span> <span class="kw">None</span>
+        bullet = <span class="kw">self</span>.pool.popleft()   <span class="cm"># Get bullet from pool</span>
+        bullet[<span class="st">'active'</span>] = <span class="kw">True</span>
+        bullet[<span class="st">'x'</span>] = x
+        bullet[<span class="st">'y'</span>] = y
+        bullet[<span class="st">'dir'</span>] = direction
+        <span class="kw">print</span>(<span class="st">f"FIRED bullet #{bullet['id']} at ({x},{y}) going {direction}"</span>)
+        <span class="kw">return</span> bullet
+    
+    <span class="kw">def</span> <span class="fn">recycle</span>(<span class="kw">self</span>, bullet):
+        <span class="cm"># When bullet hits something, return it to the pool</span>
+        bullet[<span class="st">'active'</span>] = <span class="kw">False</span>
+        <span class="kw">self</span>.pool.append(bullet)
+        <span class="kw">print</span>(<span class="st">f"Bullet #{bullet['id']} recycled back to pool."</span>)
+
+pool = BulletPool(<span class="nm">3</span>)
+
+b1 = pool.fire(<span class="nm">10</span>, <span class="nm">20</span>, <span class="st">"RIGHT"</span>)
+b2 = pool.fire(<span class="nm">15</span>, <span class="nm">25</span>, <span class="st">"UP"</span>)
+pool.recycle(b1)     <span class="cm"># b1 hits enemy and returns</span>
+b3 = pool.fire(<span class="nm">5</span>, <span class="nm">5</span>, <span class="st">"LEFT"</span>)   <span class="cm"># Reuses b1's slot!</span></pre>
+    </div>
+
+    <!-- Game Use 4 -->
+    <div class="game-use-card">
+      <h4>💬 USE CASE 4: DIALOGUE / CUTSCENE QUEUE</h4>
+      <p>RPGs have characters speak lines one after another. These lines are stored in a queue. The game presses "Next" → dequeue the next line → display it. No complex logic needed, just FIFO ordering.</p>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON — DIALOGUE SYSTEM</div>
+      <pre><span class="kw">from</span> collections <span class="kw">import</span> deque
+
+<span class="kw">class</span> <span class="fn">DialogueSystem</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>):
+        <span class="kw">self</span>.dialogue_queue = deque()
+    
+    <span class="kw">def</span> <span class="fn">load_scene</span>(<span class="kw">self</span>, lines):
+        <span class="kw">for</span> character, text <span class="kw">in</span> lines:
+            <span class="kw">self</span>.dialogue_queue.append((character, text))
+    
+    <span class="kw">def</span> <span class="fn">next_line</span>(<span class="kw">self</span>):
+        <span class="cm"># Called when player presses [A] or clicks "Next"</span>
+        <span class="kw">if not</span> <span class="kw">self</span>.dialogue_queue:
+            <span class="kw">print</span>(<span class="st">"[Scene ended]"</span>)
+            <span class="kw">return</span>
+        character, text = <span class="kw">self</span>.dialogue_queue.popleft()
+        <span class="kw">print</span>(<span class="st">f"  {character}: \"{text}\""</span>)
+
+dlg = DialogueSystem()
+dlg.load_scene([
+    (<span class="st">"Hero"</span>,   <span class="st">"Who are you?!"</span>),
+    (<span class="st">"Villain"</span>, <span class="st">"I am your final challenge."</span>),
+    (<span class="st">"Hero"</span>,   <span class="st">"Then prepare to fall!"</span>),
+    (<span class="st">"Villain"</span>, <span class="st">"Ha! You amuse me."</span>),
+])
+
+<span class="kw">print</span>(<span class="st">"--- Cutscene Start ---"</span>)
+<span class="kw">while</span> dlg.dialogue_queue:
+    dlg.next_line()
+dlg.next_line()   <span class="cm"># One extra call to show end</span></pre>
+    </div>
+
+    <div class="output-block">
+      <div class="output-label">OUTPUT</div>
+      <pre>--- Cutscene Start ---
+  Hero: "Who are you?!"
+  Villain: "I am your final challenge."
+  Hero: "Then prepare to fall!"
+  Villain: "Ha! You amuse me."
+[Scene ended]</pre>
+    </div>
+
+    <!-- Game Use 5 -->
+    <div class="game-use-card">
+      <h4>↩ USE CASE 5: UNDO SYSTEM (DEQUE AS HISTORY)</h4>
+      <p>Many strategy and puzzle games let you undo moves. Every action is pushed to a queue/deque. When you undo, you pop the latest action and reverse it. This is a classic deque use case in games.</p>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON — UNDO SYSTEM</div>
+      <pre><span class="kw">from</span> collections <span class="kw">import</span> deque
+
+<span class="kw">class</span> <span class="fn">GameWithUndo</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>):
+        <span class="kw">self</span>.history = deque(maxlen=<span class="nm">10</span>)   <span class="cm"># Keep last 10 actions max</span>
+        <span class="kw">self</span>.position = [<span class="nm">0</span>, <span class="nm">0</span>]
+    
+    <span class="kw">def</span> <span class="fn">move</span>(<span class="kw">self</span>, direction):
+        old_pos = <span class="kw">self</span>.position.copy()
+        <span class="kw">if</span> direction == <span class="st">"right"</span>:   <span class="kw">self</span>.position[<span class="nm">0</span>] += <span class="nm">1</span>
+        <span class="kw">elif</span> direction == <span class="st">"up"</span>:   <span class="kw">self</span>.position[<span class="nm">1</span>] += <span class="nm">1</span>
+        <span class="kw">self</span>.history.append((<span class="st">'move'</span>, old_pos))
+        <span class="kw">print</span>(<span class="st">f"Moved {direction} → Position: {self.position}"</span>)
+    
+    <span class="kw">def</span> <span class="fn">undo</span>(<span class="kw">self</span>):
+        <span class="kw">if not</span> <span class="kw">self</span>.history:
+            <span class="kw">print</span>(<span class="st">"Nothing to undo!"</span>)
+            <span class="kw">return</span>
+        action, old_pos = <span class="kw">self</span>.history.pop()   <span class="cm"># pop from RIGHT (latest)</span>
+        <span class="kw">self</span>.position = old_pos
+        <span class="kw">print</span>(<span class="st">f"Undone! Back to: {self.position}"</span>)
+
+g = GameWithUndo()
+g.move(<span class="st">"right"</span>)
+g.move(<span class="st">"right"</span>)
+g.move(<span class="st">"up"</span>)
+g.undo()
+g.undo()</pre>
+    </div>
+
+    <div class="output-block">
+      <div class="output-label">OUTPUT</div>
+      <pre>Moved right → Position: [1, 0]
+Moved right → Position: [2, 0]
+Moved up    → Position: [2, 1]
+Undone! Back to: [2, 0]
+Undone! Back to: [1, 0]</pre>
+    </div>
+
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 9 -->
+  <div class="section" id="s9">
+    <div class="section-header">
+      <span class="section-num">09</span>
+      <h2>COMMON MISTAKES<br>&amp; HOW TO AVOID THEM</h2>
+    </div>
+
+    <h3>Mistake 1 — Dequeuing from an Empty Queue</h3>
+    <p>If you call <code>pop(0)</code> on an empty list, Python throws an <code>IndexError</code> and your game crashes! Always check before dequeuing.</p>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON — WRONG VS RIGHT</div>
+      <pre><span class="cm"># ❌ WRONG — will crash!</span>
+queue = []
+item = queue.pop(<span class="nm">0</span>)   <span class="cm"># IndexError: pop from empty list</span>
+
+<span class="cm"># ✅ RIGHT — always check first</span>
+queue = []
+<span class="kw">if</span> queue:   <span class="cm"># Python treats empty list as False</span>
+    item = queue.pop(<span class="nm">0</span>)
+<span class="kw">else</span>:
+    <span class="kw">print</span>(<span class="st">"Queue is empty, nothing to dequeue."</span>)</pre>
+    </div>
+
+    <h3>Mistake 2 — Removing from the Wrong End</h3>
+    <p>Remember: remove from the <strong>front</strong> (index 0), not the rear. <code>pop()</code> without an argument removes the <em>last</em> item — that's a stack behavior, not a queue!</p>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON — WRONG VS RIGHT</div>
+      <pre><span class="cm"># ❌ WRONG — this is Stack behavior (LIFO), not Queue!</span>
+queue = [<span class="st">"First"</span>, <span class="st">"Second"</span>, <span class="st">"Third"</span>]
+item = queue.pop()       <span class="cm"># Removes "Third" (the LAST item) — WRONG for queue!</span>
+
+<span class="cm"># ✅ RIGHT — Queue removes from FRONT</span>
+queue = [<span class="st">"First"</span>, <span class="st">"Second"</span>, <span class="st">"Third"</span>]
+item = queue.pop(<span class="nm">0</span>)     <span class="cm"># Removes "First" — correct FIFO behavior</span></pre>
+    </div>
+
+    <h3>Mistake 3 — Forgetting That Lists are Slow for Dequeue</h3>
+    <p>For game queues that process many items per second, using <code>pop(0)</code> on a large list is a performance killer. Use <code>collections.deque</code> in real projects.</p>
+
+    <div class="code-block">
+      <div class="code-label">PYTHON — PERFORMANCE COMPARISON</div>
+      <pre><span class="kw">import</span> time
+<span class="kw">from</span> collections <span class="kw">import</span> deque
+
+N = <span class="nm">50000</span>
+
+<span class="cm"># List approach</span>
+list_q = <span class="nb">list</span>(<span class="nb">range</span>(N))
+start = time.time()
+<span class="kw">while</span> list_q: list_q.pop(<span class="nm">0</span>)
+<span class="kw">print</span>(<span class="st">f"List (pop 0): {time.time() - start:.4f} seconds"</span>)
+
+<span class="cm"># Deque approach</span>
+deq_q = deque(<span class="nb">range</span>(N))
+start = time.time()
+<span class="kw">while</span> deq_q: deq_q.popleft()
+<span class="kw">print</span>(<span class="st">f"Deque popleft: {time.time() - start:.4f} seconds"</span>)
+
+<span class="cm"># Deque is typically 100-200x faster!</span></pre>
+    </div>
+
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 10 -->
+  <div class="section" id="s10">
+    <div class="section-header">
+      <span class="section-num">10</span>
+      <h2>PRACTICE CHALLENGES<br>TEST YOUR SKILLS</h2>
+    </div>
+
+    <p>The best way to learn is by doing. Here are some game-themed challenges to level up your Queue skills:</p>
+
+    <div class="quiz-card">
+      <h4>⚔ BEGINNER CHALLENGES</h4>
+      <ol>
+        <li>Create a queue that holds 5 player names. Enqueue all 5, then dequeue them one by one and print a message like <em>"Player X has joined the match!"</em></li>
+        <li>Write a function <code>reverse_queue(q)</code> that reverses the order of items in a queue using only another queue (no lists allowed!).</li>
+        <li>Simulate a simple printer queue — add 4 documents to the queue, then process them one by one printing <em>"Printing: [document name]"</em>.</li>
+      </ol>
+    </div>
+
+    <div class="quiz-card">
+      <h4>🔥 INTERMEDIATE CHALLENGES</h4>
+      <ol>
+        <li>Build a <strong>Round-Robin Scheduler</strong> — 3 players take turns in a loop. Use a queue: dequeue player → give them a "turn" → re-enqueue them. Run for 9 total turns.</li>
+        <li>Create a <strong>chest loot queue</strong> — preload 8 items into a queue. When a player opens a chest, dequeue the next item. When the queue is empty, print <em>"Chest is empty!"</em></li>
+        <li>Implement a <strong>cooldown queue</strong> — a player has 3 abilities. Each ability takes 1-3 turns to cool down. Queue them after use and tick down their cooldown each turn.</li>
+      </ol>
+    </div>
+
+    <div class="quiz-card">
+      <h4>🏆 ADVANCED CHALLENGE</h4>
+      <ol>
+        <li>Build a <strong>mini game simulation</strong> combining what you learned: A tower defense map has 3 waves. Each wave has 5 enemies in a queue. Enemies have health points. A tower deals 30 damage per shot. Simulate the tower firing at the front enemy repeatedly until all waves are cleared. Print the state after each shot.</li>
+      </ol>
+    </div>
+
+    <div class="callout callout-tip">
+      <div class="callout-icon">✔ LEARNING TIP</div>
+      <p>Don't just read — type the code! Even copying the examples by hand helps your muscle memory. Try changing things: what happens if the queue is empty? What if you add 100 enemies? Experiment boldly.</p>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <p class="green">QUEUE — MISSION COMPLETE!</p>
+    <p style="margin-top: 14px;">YOU HAVE LEARNED: FIFO • ENQUEUE • DEQUEUE • PEEK</p>
+    <p>TYPES: LINEAR • CIRCULAR • PRIORITY • DEQUE</p>
+    <p style="margin-top: 14px;">NEXT LEVEL: STACKS • LINKED LISTS • GRAPHS • BFS</p>
+  </div>
+
+</div>
+</body>
+</html>
